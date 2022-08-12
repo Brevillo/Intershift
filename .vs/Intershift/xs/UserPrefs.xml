@@ -1,0 +1,33 @@
+﻿<Properties StartupConfiguration="{E4CEB09B-43AF-662B-6696-A87FA1C68E12}|">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Scripts/RoomManager.cs">
+    <Files>
+      <File FileName="Assets/Scripts/InputManager.cs" Line="33" Column="1" />
+      <File FileName="Assets/Scripts/CameraMovement.cs" Line="90" Column="6" />
+      <File FileName="Assets/Scripts/PlayerHealth.cs" Line="14" Column="32" />
+      <File FileName="Assets/Scripts/Lava.cs" Line="6" Column="1" />
+      <File FileName="Assets/Scripts/PlayerMovement.cs" Line="139" Column="1" />
+      <File FileName="Assets/Scripts/RoomManager.cs" Line="29" Column="6" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="Intershift" expanded="True">
+            <Node name="Assets" expanded="True">
+              <Node name="Scripts" expanded="True">
+                <Node name="Player" expanded="True" />
+                <Node name="RoomManager.cs" selected="True" />
+              </Node>
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="cf08f9e0-7cf7-4df8-80b3-fd83cc7af1fc" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>

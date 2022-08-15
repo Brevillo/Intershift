@@ -7,32 +7,33 @@ public class PlayerHealth : MonoBehaviour {
     private PlayerManager m;
 
     [SerializeField] private float respawnInputLockDur;
-    [SerializeField] internal Transform spawnPoint;
 
     [Header("Death Time Animation")]
+    [SerializeField] private string deathSound;
     [SerializeField] private SmartCurve deathCamShake;
     [SerializeField] private SmartCurve slowDownCurve, rewindCurve;
 
-    private bool deathAnim;
+    private bool doingDeathAnim, landedInNewRoom = true;
     private float ogFixedDeltaTime;
+    private Vector2 checkPointGravDir = Vector2.down;
     private List<Vector2> savePos = new List<Vector2> ();
 
     private void Start() {
         m = GetComponent<PlayerManager>();
+
         ogFixedDeltaTime = Time.fixedDeltaTime;
         rewindCurve.Stop();
         savePos.Add(transform.position);
+
+        m.rooms.RoomChange.AddListener(r => { landedInNewRoom = false; });
+
+        m.movement.PlayerLanded.AddListener(NewSpawnpoint);
     }
 
     private void Update() {
-        
+
         if (m.input.Debug1.down) Death();
-        if (m.input.Debug2.down) {
-            Debug.Break();
-            //TrailRenderer trail = GetComponent<TrailRenderer>();
-            //trail.enabled =!trail.enabled;
-            //trail.Clear();
-        }
+        if (m.input.Debug2.down) Debug.Break();
     }
 
     private void FixedUpdate() {
@@ -42,16 +43,25 @@ public class PlayerHealth : MonoBehaviour {
             savePos.Add(transform.position);
     }
 
-    public void Death() {
-        if (deathAnim) return;
+    private void NewSpawnpoint() {
+        if (!landedInNewRoom && !doingDeathAnim) {
+            landedInNewRoom = true;
+            checkPointGravDir = m.movement.gravDir;
+            RestartSavePosAt(transform.position);
+        }        
+    }
 
+    public void Death() {
+        if (doingDeathAnim) return;
+
+        Audio.Play(deathSound);
         m.cam.Shake(deathCamShake);
         StartCoroutine(DeathTimeAnimation());
     }
 
-    IEnumerator DeathTimeAnimation() {
+    private IEnumerator DeathTimeAnimation() {
 
-        deathAnim = true;
+        doingDeathAnim = true;
 
         // time slodown
         m.input.lockInput = true;
@@ -72,18 +82,22 @@ public class PlayerHealth : MonoBehaviour {
         }
 
         // finish rewinding
-        m.movement.ResetTo(savePos[0]);
-        savePos.Clear();
-        savePos.Add(transform.position);
+        m.movement.ResetTo(savePos[0], checkPointGravDir);
+        RestartSavePosAt(savePos[0]);
         m.FreezePlayer(false);
-        deathAnim = false;
+        doingDeathAnim = false;
 
         // lock input after respawning
         yield return new WaitForSeconds(respawnInputLockDur);
         m.input.lockInput = false;
     }
 
-    void SetTimeScale(float i) {
+    private void RestartSavePosAt(Vector2 start) {
+        savePos.Clear();
+        savePos.Add(start);
+    }
+
+    private void SetTimeScale(float i) {
         Time.timeScale = i;
         Time.fixedDeltaTime = ogFixedDeltaTime * i;
     }

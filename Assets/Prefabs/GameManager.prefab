@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &164553790086848023
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 164553790086848017}
+  - component: {fileID: 6489817249846322195}
+  - component: {fileID: 164553790086848016}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &164553790086848017
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164553790086848023}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6489817249846322195
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164553790086848023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 592fdf45885234c708a369d4cbbd38ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraShake: 1
+  bouncyCameraTransitions: 1
+  musicVolume: 1
+  soundEffectsVolume: 1
+--- !u!114 &164553790086848016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164553790086848023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0534b633a82348878abcdbd52ff9bd7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  scenes:
+  - name: SampleScene
+    scene: {fileID: 102900000, guid: 2cda990e2423bbf4892e6590ba056729, type: 3}
+    music: {fileID: 8300000, guid: b83dc77348d344697980b9e6ea8d70f0, type: 3}
+    volume: 0.05
+  sounds:
+  - name: PlayerDeath
+    clip:
+    - {fileID: 8300000, guid: d6b3c19b992404b50b3fa313e74a62bb, type: 3}
+    volume: 0.4
+    minPitch: 0.7
+    maxPitch: 0.7
+    sequential: 1
+  - name: PlayerStep
+    clip:
+    - {fileID: 8300000, guid: 48d827e1f69cb4713ae003ce4b238332, type: 3}
+    volume: 0.2
+    minPitch: 0.6
+    maxPitch: 0.8
+    sequential: 1
+  - name: PlayerLand
+    clip:
+    - {fileID: 8300000, guid: 48d827e1f69cb4713ae003ce4b238332, type: 3}
+    volume: 0.2
+    minPitch: 0.3
+    maxPitch: 0.4
+    sequential: 1
+  - name: PlayerWalljump
+    clip:
+    - {fileID: 8300000, guid: 48d827e1f69cb4713ae003ce4b238332, type: 3}
+    volume: 0.2
+    minPitch: 0.4
+    maxPitch: 0.5
+    sequential: 1
+  musicGroup: {fileID: 529084210747722078, guid: 368f314fdd1b849749057af4f2046f95, type: 2}
+  soundGroup: {fileID: 2476301251759543403, guid: 368f314fdd1b849749057af4f2046f95, type: 2}

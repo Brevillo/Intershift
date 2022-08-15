@@ -4,8 +4,6 @@ using TMPro;
 
 public class PlayerManager : MonoBehaviour {
 
-    public static Camera camera;
-
     internal InputManager input;
     internal PlayerMovement movement;
     internal PlayerHealth health;
@@ -15,37 +13,52 @@ public class PlayerManager : MonoBehaviour {
     internal SpriteRenderer rend;
 
     internal CameraMovement cam;
+    internal RoomManager rooms;
 
     internal LayerMask groundMask, playerMask;
 
     [SerializeField] private TextMeshProUGUI text;
+    [SerializeField] private bool showDebugText;
 
     void Start() {
-        camera = Camera.main;
+        GetReferences();
+    }
 
-        input = GetComponent<InputManager>();
-        movement = GetComponent<PlayerMovement>();
-        health = GetComponent<PlayerHealth>();
-        //anim = GetComponent<PlayerAnimation>();
+    public void GetReferences() {
 
-        rb = GetComponent<Rigidbody2D>();
-        col = GetComponent<BoxCollider2D>();
-        rend = GetComponent<SpriteRenderer>();
-        //animator = GetComponent<Animator>();
+        GetComp(ref input);
+        GetComp(ref movement);
+        GetComp(ref health);
+
+        GetComp(ref rb);
+        GetComp(ref col);
+        GetComp(ref rend);
 
         cam = FindObjectOfType<CameraMovement>();
+        rooms = FindObjectOfType<RoomManager>();
 
         groundMask = LayerMask.GetMask("Ground");
         playerMask = LayerMask.GetMask("Player");
     }
+
+    private void GetComp<type>(ref type get) => get = GetComponent<type>();
 
     public void FreezePlayer(bool freeze) {
         rb.isKinematic = freeze;
         if (freeze) rb.velocity = Vector2.zero;
     }
 
+    public void ScreenFreeze(float dur) => StartCoroutine(ScreenFreezeCoroutine(dur));
+
+    private IEnumerator ScreenFreezeCoroutine(float dur) {
+        float ogTimeScale = Time.timeScale;
+        Time.timeScale = 0;
+        yield return new WaitForSecondsRealtime(dur);
+        Time.timeScale = ogTimeScale;
+    }
+
     private void LateUpdate(){
-        text.text = debugText;
+        text.text = showDebugText ? debugText : "";
         debugText = "";
     }
 

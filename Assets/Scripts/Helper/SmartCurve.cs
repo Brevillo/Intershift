@@ -36,8 +36,8 @@ public class SmartCurve {
     /// </summary>
     public float Evaluate(bool derivative = false) {
         if (curve == null) return 0;
-        timer += (unscaledTime ? Time.unscaledDeltaTime : Time.deltaTime) * timeScale;
-        return (derivative ? Derivative(timer) * timeScale : curve.Evaluate(timer)) * valueScale;
+        timer += (unscaledTime ? Time.unscaledDeltaTime : Time.deltaTime) / timeScale;
+        return (derivative ? Derivative(timer) / timeScale : curve.Evaluate(timer)) * valueScale;
     }
 
     /// <summary>

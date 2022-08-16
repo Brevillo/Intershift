@@ -21,8 +21,7 @@ public class CameraMovement : MonoBehaviour {
     private Transform track;
     private Vector2 trackPos, roomPos, lowerLeftTrackBound, upperRightTrackBound;
 
-    private Vector2 transitionStart, transitionDir, transitionPos;
-    private float transitionMag;
+    private Vector2 transitionStart, transitionPos;
 
     private SmartCurve bounceCurve = new SmartCurve(), lerpCurve = new SmartCurve();
     private Vector2 bouncePos, bounceDir;
@@ -46,7 +45,7 @@ public class CameraMovement : MonoBehaviour {
     private void Update() {
 
         // transition
-        transitionPos = transitionStart + transitionMag * lerpCurve.Evaluate() * transitionDir;
+        transitionPos = Vector2.LerpUnclamped(transitionStart, trackPos, lerpCurve.Done() ? 1 : lerpCurve.Evaluate());
 
         // camera effects
         if (Settings.instance.cameraShake) {
@@ -65,17 +64,17 @@ public class CameraMovement : MonoBehaviour {
         }
         else shakePos = bouncePos = Vector2.zero;
 
+        // set position
+        transform.position = (Vector3)(transitionPos + shakePos + bouncePos) + Vector3.back * 10;
+
         // shake cover
         screenShakeCover.SetActive(shakePos != Vector2.zero || bouncePos.sqrMagnitude > 0.001f);
-        screenShakeCover.transform.position = transitionPos + trackPos;
-
-        // set position
-        transform.position = (Vector3)(transitionPos + trackPos + shakePos + bouncePos) + Vector3.back * 10;
+        screenShakeCover.transform.position = (Vector2)transform.position - shakePos - bouncePos;
     }
 
     private void FixedUpdate() {
         // tracking
-        trackPos = VectorClamp(Vector2.Lerp(trackPos, PushBox(track.position, trackPos, trackBoxExtents) - roomPos, trackSpeed), lowerLeftTrackBound - roomPos, upperRightTrackBound - roomPos);
+        trackPos = VectorClamp(Vector2.Lerp(trackPos, PushBox(track.position, trackPos, trackBoxExtents), trackSpeed), lowerLeftTrackBound, upperRightTrackBound);
     }
 
     public void ChangeRoom(Room r) {
@@ -89,9 +88,6 @@ public class CameraMovement : MonoBehaviour {
         upperRightTrackBound = (r.pos + r.size - Vector2.one) * m.rooms.roomSize;
 
         transitionStart = transform.position;
-        Vector2 lerpVector = roomPos - transitionStart;
-        transitionDir = lerpVector.normalized;
-        transitionMag = lerpVector.magnitude;
     }
 
     public void Shake(SmartCurve shake) {

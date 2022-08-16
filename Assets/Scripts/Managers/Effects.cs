@@ -7,7 +7,6 @@ public class Effects : MonoBehaviour {
     private PlayerManager m;
 
     [SerializeField] private ParticleSystem starSystem;
-    [SerializeField] private BoxCollider particleZone;
     [SerializeField] private bool wrap;
 
     private float prevPlayerAngle;
@@ -19,7 +18,6 @@ public class Effects : MonoBehaviour {
 
     private void Update() {
 
-
         // rotate particle spawner
         starSystem.transform.parent.rotation = m.transform.rotation;
 
@@ -30,8 +28,7 @@ public class Effects : MonoBehaviour {
               cos = Mathf.Cos(angleDelta), sin = Mathf.Sin(angleDelta),
               velAngle = playerAngle + Mathf.PI / 2;
         Vector2 pivot = m.transform.position,
-                velDir = new Vector2(Mathf.Cos(velAngle), Mathf.Sin(velAngle)),
-                box = particleZone.bounds.size, halfBox = box / 2;
+                velDir = new Vector2(Mathf.Cos(velAngle), Mathf.Sin(velAngle));
 
         var particles = new ParticleSystem.Particle[starSystem.main.maxParticles];
         int num = starSystem.GetParticles(particles);
@@ -46,15 +43,12 @@ public class Effects : MonoBehaviour {
                     pos = RotateVectorCached(pos, pivot, cos, sin);
                     p.velocity = velDir * p.velocity.magnitude;
                 }
-
-                // keeping within bounds
-                if (wrap) pos = VectorMod(pos + halfBox, box) - halfBox;
-                 
+                
                 p.position = pos;
                 particles[i] = p;
             }
-        else if (wrap) for (int i = 0; i < num; i++)
-            particles[i].position = VectorMod((Vector2)particles[i].position + halfBox, box) - halfBox;
+        //else if (wrap) for (int i = 0; i < num; i++)
+        //    particles[i].position = VectorMod((Vector2)particles[i].position + halfBox, box) - halfBox;
 
 
         starSystem.SetParticles(particles, num);
@@ -86,10 +80,5 @@ public class Effects : MonoBehaviour {
 
         // reapply system state
         system.SetParticles(particles, num);
-    }
-
-    private void OnDrawGizmos() {
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireCube(Vector2.zero, particleZone.bounds.size);
     }
 }

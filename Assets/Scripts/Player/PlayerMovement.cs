@@ -86,7 +86,7 @@ public class PlayerMovement : MonoBehaviour {
         wallClingTimer;      // time since left wall slide, but still clinging
     private int wallJumpDir; // wallDir of the current walljump
     private Vector2 vel;     // velocity adjusted for gravity
-    internal UnityEvent PlayerLanded = new UnityEvent();
+    internal bool onGround;  // is the player on the ground?
 
     // gravity shifting
     internal Vector2 gravDir = Vector2.down; // current gravity direction
@@ -130,8 +130,8 @@ public class PlayerMovement : MonoBehaviour {
 
         // determine if touching ground or ceiling
         bool jumping = state == State.jumping || state == State.walljumping,
-             onGround = BoxCheck(gravDir, groundCheckDist) == 1 && !jumping,
              headBump = BoxCheck(-gravDir, ceilingCheckDist) == 1 && jumping;
+             onGround = BoxCheck(gravDir, groundCheckDist) == 1 && !jumping;
 
         // determine wall proximity
         Vector2 rightVector = RotateByVector(Vector2.right, gravDir);
@@ -187,7 +187,6 @@ public class PlayerMovement : MonoBehaviour {
         // become grounded
         if (onGround && state != State.grounded) {
             ChangeState(State.grounded);
-            PlayerLanded.Invoke();
             Audio.Play(landSound);
             stepDistRemaining = stepDist;
         }
@@ -286,7 +285,8 @@ public class PlayerMovement : MonoBehaviour {
         // step sounds
         if (!xInput) stepDistRemaining = 0;
         if (onGround && xInput) {
-            stepDistRemaining -= Mathf.Abs(vel.x) * Time.deltaTime;
+            float absVel = Mathf.Abs(vel.x);
+            if (absVel > 1f) stepDistRemaining -= absVel * Time.deltaTime;
 
             if (stepDistRemaining <= 0) {
                 stepDistRemaining = stepDist;

@@ -10,8 +10,7 @@ public class PlayerHealth : MonoBehaviour {
 
     [Header("Death Time Animation")]
     [SerializeField] private string deathSound;
-    [SerializeField] private SmartCurve deathCamShake;
-    [SerializeField] private SmartCurve slowDownCurve, rewindCurve;
+    [SerializeField] private SmartCurve deathCamShake, slowDownCurve, rewindCurve;
 
     private bool doingDeathAnim, landedInNewRoom = true;
     private float ogFixedDeltaTime;
@@ -26,14 +25,19 @@ public class PlayerHealth : MonoBehaviour {
         savePos.Add(transform.position);
 
         m.rooms.RoomChange.AddListener(r => { landedInNewRoom = false; });
-
-        m.movement.PlayerLanded.AddListener(NewSpawnpoint);
     }
 
     private void Update() {
 
         if (m.input.Debug1.down) Death();
         if (m.input.Debug2.down) Debug.Break();
+
+        // new spawnpoint
+        if (!landedInNewRoom && !doingDeathAnim && m.movement.onGround) {
+            landedInNewRoom = true;
+            checkPointGravDir = m.movement.gravDir;
+            RestartSavePosAt(transform.position);
+        }
     }
 
     private void FixedUpdate() {
@@ -41,14 +45,6 @@ public class PlayerHealth : MonoBehaviour {
         // save position
         if (rewindCurve.Done() && savePos[savePos.Count - 1] != (Vector2)transform.position)
             savePos.Add(transform.position);
-    }
-
-    private void NewSpawnpoint() {
-        if (!landedInNewRoom && !doingDeathAnim) {
-            landedInNewRoom = true;
-            checkPointGravDir = m.movement.gravDir;
-            RestartSavePosAt(transform.position);
-        }        
     }
 
     public void Death() {
@@ -76,8 +72,11 @@ public class PlayerHealth : MonoBehaviour {
         SetTimeScale(1);
         rewindCurve.Start();
         int length = savePos.Count - 1;
+        Quaternion startRotation = transform.rotation,
+                   endRotation = Quaternion.LookRotation(Vector3.forward, -checkPointGravDir);
         while (!rewindCurve.Done()) {
-            transform.position = savePos[(int)(rewindCurve.Evaluate() * length)];
+            float rewindPercent = rewindCurve.Evaluate();
+            transform.SetPositionAndRotation(savePos[(int)(rewindPercent * length)], Quaternion.SlerpUnclamped(startRotation, endRotation, 1 - rewindPercent));
             yield return null;
         }
 

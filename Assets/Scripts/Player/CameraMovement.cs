@@ -19,7 +19,8 @@ public class CameraMovement : MonoBehaviour {
     [SerializeField] private SmartCurve bouncyLerpCurve, bouncelessLerpCurve;
 
     private Transform track;
-    private Vector2 trackPos, roomPos, lowerLeftTrackBound, upperRightTrackBound;
+    private bool centering;
+    private Vector2 trackVel, trackPos, roomPos, lowerLeftTrackBound, upperRightTrackBound;
 
     private Vector2 transitionStart, transitionPos;
 
@@ -64,17 +65,26 @@ public class CameraMovement : MonoBehaviour {
         }
         else shakePos = bouncePos = Vector2.zero;
 
-        // set position
+        UpdatePosition();
+    }
+
+    private void FixedUpdate() {
+        // tracking
+        //m.DebugText("Pushbox: " + TriggerPushBox(track.position, trackPos, trackBoxExtents));
+        Vector2 pushbox = PushBox(track.position, trackPos, trackBoxExtents);
+        Vector2 smooth = Vector2.SmoothDamp(trackPos, pushbox, ref trackVel, trackSpeed, Mathf.Infinity, Time.fixedDeltaTime);
+        Vector2 clamp = VectorClamp(smooth, lowerLeftTrackBound, upperRightTrackBound);
+        trackPos = clamp;
+
+        UpdatePosition();
+    }
+
+    private void UpdatePosition() {
         transform.position = (Vector3)(transitionPos + shakePos + bouncePos) + Vector3.back * 10;
 
         // shake cover
         screenShakeCover.SetActive(shakePos != Vector2.zero || bouncePos.sqrMagnitude > 0.001f);
         screenShakeCover.transform.position = (Vector2)transform.position - shakePos - bouncePos;
-    }
-
-    private void FixedUpdate() {
-        // tracking
-        trackPos = VectorClamp(Vector2.Lerp(trackPos, PushBox(track.position, trackPos, trackBoxExtents), trackSpeed), lowerLeftTrackBound, upperRightTrackBound);
     }
 
     public void ChangeRoom(Room r) {
@@ -105,6 +115,8 @@ public class CameraMovement : MonoBehaviour {
     }
 
     // math functions
+    private Vector2 TriggerPushBox(Vector2 c, Vector2 p, Vector2 b) => new Vector2(Mathf.Abs(c.x - p.x) > b.x ? 1 : 0,
+                                                                                   Mathf.Abs(c.y - p.y) > b.y ? 1 : 0);
     private Vector2 PushBox(Vector2 c, Vector2 p, Vector2 b) => new Vector2(c.x > p.x + b.x ? c.x - b.x : c.x < p.x - b.x ? c.x + b.x : p.x,
                                                                             c.y > p.y + b.y ? c.y - b.y : c.y < p.y - b.y ? c.y + b.y : p.y);
     private Vector2 RandomVector(float r) => new Vector2(Random.Range(-r, r), Random.Range(-r, r));

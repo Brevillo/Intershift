@@ -154,12 +154,10 @@ public class PlayerMovement : MonoBehaviour {
              wallJumpDown   = wallDir != 0 && jumpDown && newWall;
 
         // gravity shift
-        if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate());
-        m.rend.color = shiftsRemaining > 0 ? Color.white : Color.red;
-
         if (shiftDown) shiftBufferDir = rawInput;
         if (onGround) shiftsRemaining = maxShifts;
         if (shiftsRemaining > 0) shiftRefreshTimer += Time.deltaTime;
+        m.rend.color = shiftsRemaining > 0 ? Color.white : Color.red;
 
         if (shiftBuffered && shiftsRemaining > 0 && shiftRefreshTimer >= shiftRefreshTime) {
             shiftRefreshTimer = 0;
@@ -299,6 +297,12 @@ public class PlayerMovement : MonoBehaviour {
 
         // applying gravity adjusted velocity
         m.rb.velocity = RotateByVector(vel, gravDir);
+    }
+
+    private void FixedUpdate() {
+
+        // for first order changes to the player's position
+        if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate(false, true));
     }
 
     private void Run(float dir, float accel, float maxSpeed) => vel.x += (Sign0(dir) * maxSpeed - vel.x) * accel * Time.deltaTime; // thank you https://pastebin.com/Dju3wz6J

@@ -5,6 +5,6 @@ using UnityEngine;
 public class Lava : MonoBehaviour {
 
     private void OnTriggerEnter2D(Collider2D collision) {
-        if (collision.TryGetComponent(out PlayerHealth player)) player.Death();
+        if (collision.transform.parent.TryGetComponent(out PlayerHealth player)) player.Death();
     }
 }

@@ -7,68 +7,67 @@ public class Effects : MonoBehaviour {
     private PlayerManager m;
 
     [SerializeField] private ParticleSystem starSystem;
-    [SerializeField] private bool wrap;
+    [SerializeField] private float starRotationLerpTime;
+    [SerializeField] private ParticleSystem.MinMaxCurve parallax; // useful little thingy 
 
-    private float prevPlayerAngle;
+    private float prevLerpAngle, lerpAngle, lerpVel;
+    private Vector2 prevCamPos;
 
     private void Start() {
         m = FindObjectOfType<PlayerManager>();
-        prevPlayerAngle = m.transform.eulerAngles.z * Mathf.Deg2Rad;
+        prevLerpAngle = m.transform.eulerAngles.z * Mathf.Deg2Rad;
     }
 
-    private void Update() {
+    private void FixedUpdate() {
 
         // rotate particle spawner
         starSystem.transform.parent.rotation = m.transform.rotation;
 
         // rotate particles around player and rotate their velocity
-        float playerAngle = m.transform.eulerAngles.z * Mathf.Deg2Rad;
-        bool rotate = playerAngle != prevPlayerAngle;
-        float angleDelta = playerAngle - prevPlayerAngle,
-              cos = Mathf.Cos(angleDelta), sin = Mathf.Sin(angleDelta),
-              velAngle = playerAngle + Mathf.PI / 2;
-        Vector2 pivot = m.transform.position,
-                velDir = new Vector2(Mathf.Cos(velAngle), Mathf.Sin(velAngle));
+        lerpAngle = Mathf.SmoothDampAngle(lerpAngle, m.transform.eulerAngles.z, ref lerpVel, starRotationLerpTime, Mathf.Infinity, Time.fixedDeltaTime);
 
         var particles = new ParticleSystem.Particle[starSystem.main.maxParticles];
         int num = starSystem.GetParticles(particles);
 
-        if (rotate)
-            for (int i = 0; i < num; i++) {
-                var p = particles[i];
-                Vector2 pos = p.position;
+        // rotation
+        float angleDelta = (lerpAngle - prevLerpAngle) * Mathf.Deg2Rad,
+                cos = Mathf.Cos(angleDelta), sin = Mathf.Sin(angleDelta),
+                velAngle = (lerpAngle + 90f) * Mathf.Deg2Rad;
+        Vector2 pivot = m.transform.position,
+                velDir = new Vector2(Mathf.Cos(velAngle), Mathf.Sin(velAngle));
+        prevLerpAngle = lerpAngle;
 
-                // position + velocity rotation
-                if (rotate) {
-                    pos = RotateVectorCached(pos, pivot, cos, sin);
-                    p.velocity = velDir * p.velocity.magnitude;
-                }
-                
-                p.position = pos;
-                particles[i] = p;
-            }
-        //else if (wrap) for (int i = 0; i < num; i++)
-        //    particles[i].position = VectorMod((Vector2)particles[i].position + halfBox, box) - halfBox;
+        // parallax
 
+        Vector2 camPos = m.cam.transform.position,
+                camDelta = camPos - prevCamPos;
+        prevCamPos = camPos;
+        float minSpeed = starSystem.main.startSpeed.constantMin,
+              speedDif = starSystem.main.startSpeed.constantMax - minSpeed;
+
+        for (int i = 0; i < num; i++) {
+            var p = particles[i];
+            float speed = p.velocity.magnitude;
+
+            p.velocity = velDir * speed;
+            p.position += (Vector3)camDelta * parallax.Evaluate(1f - (speed - minSpeed) / speedDif);
+            p.position = RotateVectorCached(p.position, pivot, cos, sin);
+
+            particles[i] = p;
+        }
 
         starSystem.SetParticles(particles, num);
-
-        prevPlayerAngle = playerAngle;
     }
 
-    private void OnParticleTrigger() {
-        
-    }
+    private float BetterModulo(float num, float div) => num - div * Mathf.Floor(num / div);
+    private Vector2 VectorMod(Vector2 v1, Vector2 v2) => new Vector2(BetterModulo(v1.x, v2.x), BetterModulo(v1.y, v2.y));
 
-    float BetterModulo(float num, float div) => num - div * Mathf.Floor(num / div);
-
-    Vector2 VectorMod(Vector2 v1, Vector2 v2) => new Vector2(BetterModulo(v1.x, v2.x), BetterModulo(v1.y, v2.y));
-
-    Vector2 RotateVectorCached(Vector2 vector, Vector2 pivot, float cos, float sin) {
+    private Vector2 RotateVectorCached(Vector2 vector, Vector2 pivot, float cos, float sin) {
         vector -= pivot;
         return new Vector2(vector.x * cos - vector.y * sin, vector.x * sin + vector.y * cos) + pivot;
     }
 
+    // sad this doesn't work
     private void SetSimSpace(ParticleSystem system, ParticleSystemSimulationSpace space) {
         // save system state
         var particles = new ParticleSystem.Particle[system.main.maxParticles];

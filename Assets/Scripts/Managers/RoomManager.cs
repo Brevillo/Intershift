@@ -15,6 +15,7 @@ public class Room {
     public Vector2Int pos = Vector2Int.zero,
                       size = Vector2Int.one;
     public Vector2 Center() => pos + (size - Vector2.one) / 2f;
+    public Vector2 UpperBound() => pos + size - Vector2.one;
 
     public Room(Vector2Int pos, Vector2Int size) {
         this.pos = pos;
@@ -45,13 +46,12 @@ public class RoomManager : MonoBehaviour {
     }
 
     public Room CheckRooms() {
-        foreach (RoomGroup g in roomGroups)
-            foreach (Room r in g.rooms)
-                if (Physics2D.OverlapBox(r.Center() * roomSize, r.size * roomSize - checkBuffer * 2f, 0, m.playerMask)) {
-                    if (currentRoom != r) RoomChange.Invoke(r);
-                    currentRoom = r;
-                    return r;
-                }
+        foreach (RoomGroup g in roomGroups) foreach (Room r in g.rooms)
+            if (currentRoom != r && Physics2D.OverlapBox(r.Center() * roomSize, r.size * roomSize - checkBuffer * 2f, 0, m.playerMask)) {
+                RoomChange.Invoke(r);
+                currentRoom = r;
+                return r;
+            }
         return null;
     }
 

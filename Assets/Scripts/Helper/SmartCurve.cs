@@ -19,7 +19,8 @@ public class SmartCurve {
     public float
         timeScale = 1,
         valueScale = 1;
-    public bool unscaledTime = false;
+    public bool unscaledTime = false,
+                fixedTime = false;
 
     private float timer;
     public SmartCurve() => new SmartCurve(null);
@@ -34,7 +35,7 @@ public class SmartCurve {
     /// <summary>
     /// Increments the timer and evalutes the curve at that time. 
     /// </summary>
-    public float Evaluate(bool derivative = false, bool fixedTime = false) {
+    public float Evaluate(bool derivative = false) {
         if (curve == null) return 0;
         float deltaTime = fixedTime ? unscaledTime ? Time.fixedUnscaledDeltaTime : Time.fixedDeltaTime
                                     : unscaledTime ? Time.unscaledDeltaTime      : Time.deltaTime;

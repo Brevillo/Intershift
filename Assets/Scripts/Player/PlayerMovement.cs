@@ -139,12 +139,13 @@ public class PlayerMovement : MonoBehaviour {
 
         // directional input
         Vector2 rawInput    = m.input.Move,
-                input       = ConfineDirections(RotateByVector(rawInput, gravDir, true));
+                input       = ConfineDirections(RotateByVector(rawInput, gravDir, true), 8),
+                shiftInput  = ConfineDirections(rawInput, 4, VectFunc(Mathf.Abs, new Vector2(gravDir.y, gravDir.x)));
         // jump input
         bool jumpDown       = BufferTimer(m.input.Jump.down, jumpBuffer, ref jumpBufferTimer),
              jumpReleased   = m.input.Jump.released,
         // shift input
-             shiftDown          = m.input.Action.down && rawInput != Vector2.zero,
+             shiftDown      = m.input.Action.down && shiftInput != Vector2.zero && shiftInput != gravDir,
              shiftBuffered  = BufferTimer(shiftDown, shiftBuffer, ref shiftBufferTimer),
         // wall input
              xInput         = Mathf.Abs(input.x) > 0.01f,
@@ -153,8 +154,12 @@ public class PlayerMovement : MonoBehaviour {
              clinging       = BufferTimer(slideInput, wallClingTime, ref wallClingTimer),
              wallJumpDown   = wallDir != 0 && jumpDown && newWall;
 
+        Debug.DrawRay(Vector2.zero, input, Color.red);
+        Debug.DrawRay(Vector2.zero, shiftInput, Color.yellow);
+        Debug.DrawRay(Vector2.zero, rawInput, Color.blue);
+
         // gravity shift
-        if (shiftDown) shiftBufferDir = rawInput;
+        if (shiftDown) shiftBufferDir = shiftInput;
         if (onGround) shiftsRemaining = maxShifts;
         if (shiftsRemaining > 0) shiftRefreshTimer += Time.deltaTime;
         m.rend.color = shiftsRemaining > 0 ? Color.white : Color.red;
@@ -165,7 +170,7 @@ public class PlayerMovement : MonoBehaviour {
             shiftsRemaining--;
 
             // impacts to player
-            gravDir = RemoveDiagonal(shiftBufferDir, new Vector2(Mathf.Abs(gravDir.y), Mathf.Abs(gravDir.x)));
+            gravDir = shiftBufferDir;
             shiftRotation.Start();
             shiftStart = transform.rotation;
             shiftEnd = Quaternion.LookRotation(Vector3.forward, -gravDir);
@@ -189,10 +194,8 @@ public class PlayerMovement : MonoBehaviour {
             stepDistRemaining = stepDist;
         }
 
-        // state managment
-        stateDur += Time.deltaTime;
-
         // during state
+        stateDur += Time.deltaTime;
         switch (state) {
 
             case State.grounded:
@@ -276,13 +279,9 @@ public class PlayerMovement : MonoBehaviour {
                 break;
         }
 
-        // debug
-        m.DebugText("State: " + state);
-        m.DebugText("Velocity: " + vel);
-
         // step sounds
         if (!xInput) stepDistRemaining = 0;
-        if (onGround && xInput) {
+        else if (onGround && xInput) {
             float absVel = Mathf.Abs(vel.x);
             if (absVel > 1f) stepDistRemaining -= absVel * Time.deltaTime;
 
@@ -299,10 +298,15 @@ public class PlayerMovement : MonoBehaviour {
         m.rb.velocity = RotateByVector(vel, gravDir);
     }
 
+    private void OnDrawGizmos() {
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(Vector2.zero, 1);
+    }
+
     private void FixedUpdate() {
 
         // for first order changes to the player's position
-        if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate(false, true));
+        if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate(false));
     }
 
     private void Run(float dir, float accel, float maxSpeed) => vel.x += (Sign0(dir) * maxSpeed - vel.x) * accel * Time.deltaTime; // thank you https://pastebin.com/Dju3wz6J
@@ -315,33 +319,28 @@ public class PlayerMovement : MonoBehaviour {
     private void ResetBuffers() => jumpBufferTimer = shiftBufferTimer = Mathf.Infinity;
 
     // math functions
-    /// <summary>
-    /// Returns the sign of i, and 0 if i == 0.
-    /// </summary>
     private int Sign0(float i) => i > 0 ? 1 : i < 0 ? -1 : 0;
-    /// <summary>
-    /// Rotates vector v by vector r. If inverse, rotates the opposite direction.
-    /// </summary>
+    private float RoundTo(float i, int p) {
+        float ten = Mathf.Pow(10, p);
+        return Mathf.Round(i * ten) / ten;
+    }
     private Vector2 RotateByVector(Vector2 v, Vector2 r, bool inverse = false) {
         float a = Mathf.Atan2(r.y, r.x) + Mathf.PI / 2;
         if (inverse) a = Mathf.PI * 2 - a;
         float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
         return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
     }
-    /// <summary>
-    /// Returns vector v but bound to the closest up/down/left/right direction.
-    /// </summary>
-    /// <param name="favor">
-    /// Axis to favor if perfectly between two direction
-    /// </param>
-    private Vector2 RemoveDiagonal(Vector2 v, Vector2 favor) {
-        float x = v.x * v.x, y = v.y * v.y;
-        return (v * (x == y ? favor : x > y ? Vector2.right : Vector2.up)).normalized;
+    private Vector2 ConfineDirections(Vector2 v, int dir, Vector2? favor = null) {
+
+        if (v == Vector2.zero) return Vector2.zero;
+        if (favor != null && Mathf.Abs(v.x) == Mathf.Abs(v.y)) return (v * (Vector2)favor).normalized;
+
+        float m = 2f * Mathf.PI / dir,
+              a = Mathf.Round(Mathf.Atan2(v.y, v.x) / m) * m;
+        return VectFunc(RoundTo, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), 3);
     }
-    /// <summary>
-    /// Confines vector v to 8 direcitons.
-    /// </summary>
-    private Vector2 ConfineDirections(Vector2 v) => new Vector2(Sign0(Mathf.Round(v.x)), Sign0(Mathf.Round(v.y)));
+    private Vector2 VectFunc(System.Func<float, int, float> f, Vector2 v, int i) => new Vector2(f(v.x, i), f(v.y, i));
+    private Vector2 VectFunc(System.Func<float, float> f, Vector2 v) => new Vector2(f(v.x), f(v.y));
 
     // boxcast functions
     private int BoxCheck(Vector2 dir, float dist) {

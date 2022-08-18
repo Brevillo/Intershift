@@ -7,7 +7,7 @@ public class CameraMovement : MonoBehaviour {
     /* Camera Features
     TRANSITION  : transitions between rooms with an animation curve
     TRACK       : tracks the player in larger rooms, and stops at room walls
-    TRACK BOX   : an invisble box that the player must push for the camera tracking to mvove
+    TRACK BOX   : an invisble box that the player must push for the camera tracking to move
     SHAKE       : camera shakes randomly for a duration and amplitude controlled by animation curve
     BOUNCE      : camera bounces back and forth on a specific axis for a duration and amplitude controlled by animation curve
     SHAKE COVER : a black cover will appear when the camera is shaking to ensure other rooms remain unseen
@@ -16,64 +16,73 @@ public class CameraMovement : MonoBehaviour {
     [SerializeField] private float trackSpeed;
     [SerializeField] internal Vector2 trackBoxExtents;
     [SerializeField] private GameObject screenShakeCover;
-    [SerializeField] private SmartCurve bouncyLerpCurve, bouncelessLerpCurve;
+    [SerializeField] private SmartCurve transitionCurve;
 
-    private Transform track;
-    private bool centering;
-    private Vector2 trackVel, trackPos, roomPos, lowerLeftTrackBound, upperRightTrackBound;
-
+    // transition
     private Vector2 transitionStart, transitionPos;
 
-    private SmartCurve bounceCurve = new SmartCurve(), lerpCurve = new SmartCurve();
-    private Vector2 bouncePos, bounceDir;
+    // tracking
+    private bool centering;
+    private Vector2 trackVel, trackPos, lowerTrackBound, upperTrackBound;
 
+    // shake
     private List<SmartCurve> shakes = new List<SmartCurve>();
     private Vector2 shakePos;
-    private System.Predicate<SmartCurve> shakeDone = s => s.Done();
+
+    // bounce
+    private SmartCurve bounceCurve = new SmartCurve();
+    private Vector2 bouncePos, bounceDir;
 
     private PlayerManager m;
 
     private void Start() {
         m = FindObjectOfType<PlayerManager>();
 
-        transitionPos = transform.position;
-        track = FindObjectOfType<PlayerManager>().transform;
+        transitionCurve.Stop();
 
         m.rooms.RoomChange.AddListener(ChangeRoom);
-        //trackPos = m.rooms.CheckRooms().;
+        Room startRoom = m.rooms.CheckRooms();
+        if (startRoom != null) {
+            transitionPos = trackPos = lowerTrackBound = startRoom.pos * m.rooms.roomSize;
+            upperTrackBound = startRoom.UpperBound() * m.rooms.roomSize;
+        }
     }
 
     private void Update() {
 
         // transition
-        transitionPos = Vector2.LerpUnclamped(transitionStart, trackPos, lerpCurve.Done() ? 1 : lerpCurve.Evaluate());
+        float transitionPercent = transitionCurve.Evaluate();
+        transitionPos = Vector2.LerpUnclamped(transitionStart, trackPos, transitionPercent);
 
         // camera effects
-        if (Settings.instance.cameraShake) {
+        if (SettingsManager.settings.cameraShake) {
 
             // shaking
             shakePos = Vector2.zero;
             if (shakes.Count != 0) {
-                shakes.RemoveAll(shakeDone);
+                shakes.RemoveAll(s => s.Done());
                 float amp = 0;
                 foreach (SmartCurve s in shakes) amp = Mathf.Max(s.Evaluate(), amp);
                 shakePos = RandomVector(amp);
             }
 
             // bouncing
-            bouncePos = bounceDir * bounceCurve.Evaluate();
+            bouncePos = bounceCurve.Done() ? Vector2.zero : bounceDir * bounceCurve.Evaluate();
         }
         else shakePos = bouncePos = Vector2.zero;
+
+        // shake cover
+        screenShakeCover.SetActive(shakePos + bouncePos != Vector2.zero || transitionPercent > 1f);
+        screenShakeCover.transform.position = transitionPercent > 1f ? trackPos : transitionPos;
 
         UpdatePosition();
     }
 
     private void FixedUpdate() {
         // tracking
-        //m.DebugText("Pushbox: " + TriggerPushBox(track.position, trackPos, trackBoxExtents));
-        Vector2 pushbox = PushBox(track.position, trackPos, trackBoxExtents);
+        Vector2 pushbox = PushBox(m.transform.position, trackPos, trackBoxExtents);
         Vector2 smooth = Vector2.SmoothDamp(trackPos, pushbox, ref trackVel, trackSpeed, Mathf.Infinity, Time.fixedDeltaTime);
-        Vector2 clamp = VectorClamp(smooth, lowerLeftTrackBound, upperRightTrackBound);
+        Vector2 clamp = VectorClamp(smooth, lowerTrackBound, upperTrackBound);
         trackPos = clamp;
 
         UpdatePosition();
@@ -81,29 +90,17 @@ public class CameraMovement : MonoBehaviour {
 
     private void UpdatePosition() {
         transform.position = (Vector3)(transitionPos + shakePos + bouncePos) + Vector3.back * 10;
-
-        // shake cover
-        screenShakeCover.SetActive(shakePos != Vector2.zero || bouncePos.sqrMagnitude > 0.001f);
-        screenShakeCover.transform.position = (Vector2)transform.position - shakePos - bouncePos;
     }
 
     public void ChangeRoom(Room r) {
+        transitionStart = transitionPos;
+        transitionCurve.Start();
 
-        lerpCurve = Settings.instance.bouncyCameraTransitions ? bouncyLerpCurve : bouncelessLerpCurve;
-        lerpCurve.Start();
-
-        roomPos = r.pos * m.rooms.roomSize;
-
-        lowerLeftTrackBound = roomPos;
-        upperRightTrackBound = (r.pos + r.size - Vector2.one) * m.rooms.roomSize;
-
-        transitionStart = transform.position;
+        lowerTrackBound = r.pos * m.rooms.roomSize;
+        upperTrackBound = r.UpperBound() * m.rooms.roomSize;
     }
 
-    public void Shake(SmartCurve shake) {
-        shakes.Add(shake.Copy());
-    }
-
+    public void Shake(SmartCurve shake) => shakes.Add(shake.Copy());
     public void Bounce(SmartCurve bounce, Vector2 dir) {
         bounceCurve = bounce.Copy();
         bounceDir = dir;

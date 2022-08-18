@@ -54,7 +54,7 @@ public class PlayerHealth : MonoBehaviour {
         if (rewindCurve.Done() && savePos[savePos.Count - 1] != (Vector2)transform.position)
             savePos.Add(transform.position);
         else if (!rewindCurve.Done()) {
-            float rewindPercent = rewindCurve.Evaluate(false, true);
+            float rewindPercent = rewindCurve.Evaluate(false);
             transform.SetPositionAndRotation(savePos[(int)(rewindPercent * savePosLength)],
                 Quaternion.SlerpUnclamped(deathAnimStartRotation, deathAnimEndRotation, 1 - rewindPercent));
         }

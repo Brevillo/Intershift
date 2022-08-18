@@ -9,8 +9,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 164553790086848017}
-  - component: {fileID: 6489817249846322195}
   - component: {fileID: 164553790086848016}
+  - component: {fileID: 208817581136123932}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -32,22 +32,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6489817249846322195
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 164553790086848023}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 592fdf45885234c708a369d4cbbd38ed, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cameraShake: 1
-  bouncyCameraTransitions: 1
-  musicVolume: 1
-  soundEffectsVolume: 1
 --- !u!114 &164553790086848016
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96,3 +80,15 @@ MonoBehaviour:
     sequential: 1
   musicGroup: {fileID: 529084210747722078, guid: 368f314fdd1b849749057af4f2046f95, type: 2}
   soundGroup: {fileID: 2476301251759543403, guid: 368f314fdd1b849749057af4f2046f95, type: 2}
+--- !u!114 &208817581136123932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164553790086848023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 975c7a7cbbde344059b7e414c034b519, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

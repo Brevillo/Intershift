@@ -21,7 +21,7 @@ public class Effects : MonoBehaviour {
     private void FixedUpdate() {
 
         // rotate particle spawner
-        starSystem.transform.parent.rotation = m.transform.rotation;
+        starSystem.transform.parent.SetPositionAndRotation(m.cam.transform.position, m.transform.rotation);
 
         // rotate particles around player and rotate their velocity
         lerpAngle = Mathf.SmoothDampAngle(lerpAngle, m.transform.eulerAngles.z, ref lerpVel, starRotationLerpTime, Mathf.Infinity, Time.fixedDeltaTime);

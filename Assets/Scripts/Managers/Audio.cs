@@ -72,8 +72,8 @@ public class Audio : MonoBehaviour {
 
     private void Update() {
 
-        float mVol = Settings.instance.musicVolume,
-              sVol = Settings.instance.soundEffectsVolume;
+        float mVol = SettingsManager.settings.musicVolume,
+              sVol = SettingsManager.settings.soundEffectsVolume;
         AudioMixer mix = musicGroup.audioMixer;
 
         mix.SetFloat("MusicVolume", mVol == 0 ? -80f : Mathf.Log10(mVol) * 20);

@@ -22,7 +22,7 @@ public class SmartCurve {
     public bool unscaledTime = false,
                 fixedTime = false;
 
-    private float timer;
+    private float timer = 0;
     public SmartCurve() => new SmartCurve(null);
     public SmartCurve(AnimationCurve curve, float timeScale = 1, float valueScale = 1, bool unscaledTime = false) {
         this.curve        = curve;
@@ -74,4 +74,50 @@ public class SmartCurve {
               y2 = curve.Evaluate(x2);
         return (y2 - y1) / (x2 - x1);
     }
+}
+
+/// <summary>
+/// Allows for stringing multiple smart curves together, each with separate characteristics.
+/// </summary>
+[System.Serializable]
+public class SmartCurveComposite {
+
+    public SmartCurve[] curves;
+    private int currentCurve;
+
+    public SmartCurveComposite(SmartCurve[] curves) => this.curves = curves;
+
+    /// <summary>
+    /// Evaluates for the current curve and progresses to the next if the current is finished.
+    /// </summary>
+    public float Evaluate() {
+        if (curves[currentCurve].Done()) currentCurve++;
+        return curves[currentCurve].Evaluate();
+    }
+
+    /// <summary>
+    /// Duplicates and returns the smart curve composite
+    /// </summary>
+    public SmartCurveComposite Copy() => new SmartCurveComposite(curves);
+
+    /// <summary>
+    /// Starts the smart curve composite.
+    /// </summary>
+    public void Start() {
+        currentCurve = 0;
+        foreach (SmartCurve c in curves) c.Start();
+    }
+
+    /// <summary>
+    /// Stops the smart curve composite.
+    /// </summary>
+    public void Stop() {
+        currentCurve = curves.Length - 1;
+        foreach (SmartCurve c in curves) c.Stop();
+    }
+
+    /// <summary>
+    /// Specifies whether the smart curve composite has finished.
+    /// </summary>
+    public bool Done() => curves[curves.Length - 1].Done();
 }

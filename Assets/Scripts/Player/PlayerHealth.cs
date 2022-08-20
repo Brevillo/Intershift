@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using UnityEngine.Events;
 
 public class PlayerHealth : MonoBehaviour {
 
@@ -11,17 +12,30 @@ public class PlayerHealth : MonoBehaviour {
 
     [Header("Death Time Animation")]
     [SerializeField] private string deathSound;
-    [SerializeField] private float deathTimeFreezeDur;
+    [SerializeField] internal float
+        rewindLerpSpeed;
+    [SerializeField] private float
+        rewindFrameFrequency,
+        deathTimeFreezeDur;
     [SerializeField] private SmartCurve deathCamShake, slowDownCurve, rewindCurve;
 
     // respawning
     private bool landedInNewRoom = true;
     private Vector2 checkPointGravDir = Vector2.down;
 
+    // rewinding
+    internal UnityEvent
+        newRewindFrame = new UnityEvent(),
+        rewindStart = new UnityEvent(),
+        rewindStop = new UnityEvent();
+    internal int rewindPercent;
+    private float rewindFrameTimer;
+    private Vector2 rewindLerpVel;
+    internal List<Vector2> savePos = new List<Vector2> ();
+
     // death animation
-    private bool doingDeathAnim;
+    private bool dying;
     private float ogFixedDeltaTime;
-    private List<Vector2> savePos = new List<Vector2> ();
     private int savePosLength;
     private Quaternion deathAnimStartRotation, deathAnimEndRotation;
 
@@ -41,7 +55,7 @@ public class PlayerHealth : MonoBehaviour {
         if (m.input.Debug2.down) SceneManager.LoadScene(SceneManager.GetActiveScene().name);
 
         // new spawnpoint
-        if (!landedInNewRoom && !doingDeathAnim && m.movement.onGround) {
+        if (!landedInNewRoom && !dying && m.movement.onGround) {
             landedInNewRoom = true;
             checkPointGravDir = m.movement.gravDir;
             RestartSavePosAt(transform.position);
@@ -50,18 +64,28 @@ public class PlayerHealth : MonoBehaviour {
 
     private void FixedUpdate() {
 
-        // save position
-        if (rewindCurve.Done() && savePos[savePos.Count - 1] != (Vector2)transform.position)
-            savePos.Add(transform.position);
-        else if (!rewindCurve.Done()) {
-            float rewindPercent = rewindCurve.Evaluate(false);
-            transform.SetPositionAndRotation(savePos[(int)(rewindPercent * savePosLength)],
-                Quaternion.SlerpUnclamped(deathAnimStartRotation, deathAnimEndRotation, 1 - rewindPercent));
+        rewindFrameTimer += Time.fixedDeltaTime;
+        if (rewindFrameTimer >= rewindFrameFrequency) {
+            rewindFrameTimer = 0;
+            newRewindFrame.Invoke();
+
+            // save position
+            if (rewindCurve.Done()) savePos.Add(transform.position);
+
+            // rewind
+            else {
+                float curve = rewindCurve.Evaluate();
+                rewindPercent = (int)(curve * savePosLength);
+
+                transform.SetPositionAndRotation(
+                    Vector2.SmoothDamp(transform.position, savePos[rewindPercent], ref rewindLerpVel, rewindLerpSpeed, Mathf.Infinity, Time.fixedDeltaTime),
+                    Quaternion.SlerpUnclamped(deathAnimStartRotation, deathAnimEndRotation, 1 - curve));
+            }
         }
     }
 
     public void Death() {
-        if (doingDeathAnim) return;
+        if (dying) return;
 
         Audio.Play(deathSound);
         m.cam.Shake(deathCamShake);
@@ -70,38 +94,43 @@ public class PlayerHealth : MonoBehaviour {
 
     private IEnumerator DeathTimeAnimation() {
 
-        doingDeathAnim = true;
+        dying = true;
         m.input.lockInput = true;
+        m.movement.enabled = false;
 
         // time freeze
         Time.timeScale = 0;
         yield return new WaitForSecondsRealtime(deathTimeFreezeDur);
         Time.timeScale = 1;
 
-        //// time slodown
-        //slowDownCurve.Start();
-        //while (!slowDownCurve.Done()) {
-        //    SetTimeScale(slowDownCurve.Evaluate());
-        //    yield return null;
-        //}
+        // time slodown
+        slowDownCurve.Start();
+        while (!slowDownCurve.Done()) {
+            SetTimeScale(slowDownCurve.Evaluate());
+            yield return null;
+        }
 
         // rewind player
+        rewindStart.Invoke();
         m.FreezePlayer(true);
         SetTimeScale(1);
         rewindCurve.Start();
+        rewindFrameTimer = 0;
         savePosLength = savePos.Count - 1;
         deathAnimStartRotation = transform.rotation;
         deathAnimEndRotation = Quaternion.LookRotation(Vector3.forward, -checkPointGravDir);
         while (!rewindCurve.Done())  yield return null;
 
         // finish rewinding
+        rewindStop.Invoke();
         m.movement.ResetTo(savePos[0], checkPointGravDir);
         RestartSavePosAt(savePos[0]);
         m.FreezePlayer(false);
-        doingDeathAnim = false;
+        dying = false;
 
         // lock input after respawning
         yield return new WaitForSeconds(respawnInputLockDur);
+        m.movement.enabled = true;
         m.input.lockInput = false;
     }
 

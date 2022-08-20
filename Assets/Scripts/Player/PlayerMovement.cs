@@ -78,6 +78,8 @@ public class PlayerMovement : MonoBehaviour {
 
     #endregion
 
+    #region private variables
+
     private PlayerManager m;
 
     // movement
@@ -109,6 +111,8 @@ public class PlayerMovement : MonoBehaviour {
 
     // sound
     private float stepDistRemaining;
+
+    #endregion
 
     private void Start() {
         m = GetComponent<PlayerManager>();
@@ -153,10 +157,6 @@ public class PlayerMovement : MonoBehaviour {
              slideInput     = Sign0(input.x) == wallDir && xInput && newWall && !onGround,
              clinging       = BufferTimer(slideInput, wallClingTime, ref wallClingTimer),
              wallJumpDown   = wallDir != 0 && jumpDown && newWall;
-
-        Debug.DrawRay(Vector2.zero, input, Color.red);
-        Debug.DrawRay(Vector2.zero, shiftInput, Color.yellow);
-        Debug.DrawRay(Vector2.zero, rawInput, Color.blue);
 
         // gravity shift
         if (shiftDown) shiftBufferDir = shiftInput;
@@ -298,13 +298,7 @@ public class PlayerMovement : MonoBehaviour {
         m.rb.velocity = RotateByVector(vel, gravDir);
     }
 
-    private void OnDrawGizmos() {
-        Gizmos.color = Color.white;
-        Gizmos.DrawWireSphere(Vector2.zero, 1);
-    }
-
     private void FixedUpdate() {
-
         // for first order changes to the player's position
         if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate(false));
     }

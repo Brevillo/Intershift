@@ -28,6 +28,10 @@ public class Pendulum : MonoBehaviour {
         currentGravDir = m.movement.gravDir;
     }
 
+    private void Reset() {
+        
+    }
+
     private void OnValidate() {
         startPos = transform.position;
         SetLine();

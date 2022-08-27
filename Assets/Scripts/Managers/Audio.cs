@@ -96,11 +96,11 @@ public class Audio : MonoBehaviour {
         foreach (SceneMusic m in scenes)
             if (m.scene.name == currentScene) {
 
-                if (m.music == musicSource.clip) return;
-
-                musicSource.clip = m.music;
                 musicSource.volume = m.volume;
-                musicSource.Play();
+                if (m.music != musicSource.clip) {
+                    musicSource.clip = m.music;
+                    musicSource.Play();
+                }
                 return;
             }
     }

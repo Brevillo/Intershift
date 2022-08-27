@@ -47,20 +47,16 @@ public class Rewindable : MonoBehaviour {
             positions.Add(transform.position);
             rotations.Add(transform.eulerAngles.z);
         }
-
-        print(positions.Count + " ?= " + rewind.savePos.Count + " ::: " + (positions.Count == rewind.savePos.Count));
     }
 
     private void StartRewind() {
         foreach (Behaviour b in disableDuringRewind) b.enabled = false;
         rewinding = true;
-        print("started");
     }
 
     private void StopRewind() {
         foreach (Behaviour b in disableDuringRewind) b.enabled = true;
         rewinding = false;
-        print("stopped");
 
         positions.Clear();
         rotations.Clear();

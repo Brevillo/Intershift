@@ -4,35 +4,34 @@ using TMPro;
 
 public class PlayerManager : MonoBehaviour {
 
-    internal InputManager input;
-    internal PlayerMovement movement;
-    internal PlayerHealth health;
+    public static PlayerManager instance;
+    public static InputManager input;
+    public static PlayerMovement movement;
+    public static PlayerHealth health;
 
-    internal Rigidbody2D rb;
-    internal BoxCollider2D col;
-    internal SpriteRenderer rend;
+    public static Rigidbody2D rb;
+    public static BoxCollider2D col;
+    public static SpriteRenderer rend;
 
-    internal CameraMovement cam;
-    internal RoomManager rooms;
+    public static CameraMovement cam;
+    public static RoomManager rooms;
 
-    internal LayerMask groundMask, playerMask;
+    public static LayerMask groundMask, playerMask;
 
     [SerializeField] private TextMeshProUGUI text;
     [SerializeField] private bool showDebugText;
 
-    void Start() {
-        GetReferences();
-    }
+    private void Awake() {
 
-    public void GetReferences() {
+        instance = this;
 
-        GetComp(ref input);
-        GetComp(ref movement);
-        GetComp(ref health);
+        Get(ref input);
+        Get(ref movement);
+        Get(ref health);
 
-        GetComp(ref rb);
-        GetComp(ref col);
-        GetComp(ref rend);
+        Get(ref rb);
+        Get(ref col);
+        Get(ref rend);
 
         cam = FindObjectOfType<CameraMovement>();
         rooms = FindObjectOfType<RoomManager>();
@@ -41,7 +40,7 @@ public class PlayerManager : MonoBehaviour {
         playerMask = LayerMask.GetMask("Player");
     }
 
-    private void GetComp<type>(ref type get) => get = GetComponent<type>();
+    private void Get<type>(ref type get) => get = GetComponent<type>();
 
     public void FreezePlayer(bool freeze) {
         rb.isKinematic = freeze;

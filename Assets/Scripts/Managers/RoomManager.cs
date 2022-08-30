@@ -15,18 +15,22 @@ public class Room {
     public string name;
     public Vector2Int pos = Vector2Int.zero,
                       size = Vector2Int.one;
-    public RespawnZone[] respawnZones;
+    public RespawnPoint[] respawnPoints;
 
     public Vector2 Center() => pos + (size - Vector2.one) / 2f;
     public Vector2 UpperBound() => pos + size - Vector2.one;
 }
 
 [System.Serializable]
-public class RespawnZone {
-    public Vector2 pos, size, gravDir;
+public class RespawnPoint {
+    public Vector2 pos;
+    public float gravDir;
+    public Vector2 RealPos(Vector2 roomPos) => Physics2D.Raycast(pos + roomPos, gravDir.DegToVector(), Mathf.Infinity, PlayerManager.groundMask).point;
 }
 
 public class RoomManager : MonoBehaviour {
+
+    public static RoomManager instance;
 
     internal readonly Vector2 roomSize = new Vector2(64f, 36f);
     [SerializeField] private Vector2 checkBuffer;
@@ -36,59 +40,55 @@ public class RoomManager : MonoBehaviour {
     [SerializeField] private List<RoomGroup> roomGroups;
 
     internal UnityEvent<Room> RoomChange = new UnityEvent<Room>();
-    internal UnityEvent<Vector2> ExitRespawnZone = new UnityEvent<Vector2>();
     private Room currentRoom;
-    private RespawnZone currentRespawnZone;
 
-    private PlayerManager m;
-
-    private void Start() {
-        m = FindObjectOfType<PlayerManager>();
+    private void Awake() {
+        instance = this;
     }
 
     private void Update() {
-        CheckRooms();
-        CheckRespawn();
-
-        currentRespawnZone = null;
-        print(currentRespawnZone != null);
+        CheckRooms(PlayerManager.instance.transform.position);
     }
 
-    public Room CheckRooms() {
-        foreach (RoomGroup g in roomGroups) foreach (Room r in g.rooms)
-            if (currentRoom != r && Physics2D.OverlapBox(r.Center() * roomSize, r.size * roomSize - checkBuffer * 2f, 0, m.playerMask)) {
-                RoomChange.Invoke(r);
-                currentRoom = r;
-                return r;
-            }
-        return null;
-    }
+    public void CheckRooms(Vector2 player) {
+        foreach (RoomGroup g in roomGroups)
+            foreach (Room r in g.rooms) {
+                if (r == currentRoom) continue;
 
-    private void CheckRespawn() {
-        Vector2 pos = currentRoom.Center() * roomSize;
+                Vector2 center = r.Center() * roomSize,
+                        size   = r.size * roomSize / 2f;
 
-        // exit respawn zone
-        if (currentRespawnZone != null && !Physics2D.OverlapBox(currentRespawnZone.pos + pos, currentRespawnZone.size, 0, m.playerMask)) {
-            currentRespawnZone = null;
-            print("exited respawn zone");
-            ExitRespawnZone.Invoke(currentRespawnZone.gravDir);
-        }
+                // check if player is in the room
+                if (Mathf.Abs(player.x - center.x) < size.x && Mathf.Abs(player.y - center.y) < size.y) {
 
-        // enter respawn zone
-        foreach (RespawnZone z in currentRoom.respawnZones)
-            if (currentRespawnZone != z && Physics2D.OverlapBox(z.pos + pos, z.size, 0, m.playerMask)) {
-                currentRespawnZone = z;
-                print("new respawn zone");
-                return;
+                    RoomChange.Invoke(r);
+                    currentRoom = r;
+
+                    // get checkpoint
+                    RespawnPoint close = null;
+                    float dist = Mathf.Infinity;
+
+                    foreach (RespawnPoint p in r.respawnPoints) {
+                        float newDist = (p.pos - player).sqrMagnitude;
+                        if (newDist < dist) {
+                            dist = newDist;
+                            close = p;
+                        }
+                    }
+
+                    if (close != null) {
+                        Vector2 respawn = close.RealPos(r.Center() * roomSize);
+                        PlayerMovement.respawmInfo = new Vector3(respawn.x, respawn.y, close.gravDir);
+                    }
+
+                    return;
+                }
             }
     }
 
     private void DrawBounds() {
 
-        if (m == null) {
-            m = FindObjectOfType<PlayerManager>();
-            if (m.cam == null) m.GetReferences();
-        }
+        CameraMovement cam = FindObjectOfType<CameraMovement>();
 
         foreach (RoomGroup g in roomGroups)
             foreach (Room r in g.rooms) {
@@ -96,11 +96,15 @@ public class RoomManager : MonoBehaviour {
                 Vector2 pos = r.Center() * roomSize,
                         size = r.size * roomSize;
 
+                // room bounds
                 Gizmos.color = g.color;
                 Gizmos.DrawWireCube(pos, size);
 
-                // respawn zones
-                foreach (RespawnZone z in r.respawnZones) Gizmos.DrawWireCube(z.pos + pos, z.size);
+                // respawn points
+                foreach (RespawnPoint p in r.respawnPoints) {
+                    Gizmos.DrawWireSphere(p.pos + pos, 1f);
+                    Gizmos.DrawLine(p.pos + pos, p.RealPos(pos));
+                }
 
                 if (showTriggers) {
                     Gizmos.color = Color.green;
@@ -109,8 +113,8 @@ public class RoomManager : MonoBehaviour {
                     Gizmos.DrawWireCube(pos, size - checkBuffer * 2f);
 
                     // camera track threshold
-                    Gizmos.DrawWireCube(pos, size - roomSize - m.cam.trackBoxExtents * 2f);
-                    Gizmos.DrawWireCube(pos, size - roomSize + m.cam.trackBoxExtents * 2f);
+                    Gizmos.DrawWireCube(pos, size - roomSize - cam.trackBoxExtents * 2f);
+                    Gizmos.DrawWireCube(pos, size - roomSize + cam.trackBoxExtents * 2f);
                 }
             }
     }

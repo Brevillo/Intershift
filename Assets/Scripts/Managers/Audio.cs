@@ -106,6 +106,6 @@ public class Audio : MonoBehaviour {
     }
 
     private void OnValidate() {
-        foreach (SceneMusic m in scenes) m.name = m.scene.name;
+        foreach (SceneMusic m in scenes) m.name = m.scene != null ? m.scene.name : "No Scene :(";
     }
 }

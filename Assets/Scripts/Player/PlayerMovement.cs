@@ -80,9 +80,10 @@ public class PlayerMovement : MonoBehaviour {
 
     #region private variables
 
-    private PlayerManager m;
+    public static Vector3 respawmInfo = Vector3.forward * 270f;
 
     // movement
+    internal bool lockMovement;
     private float
         jumpBufferTimer,     // time since jump pressed
         wallClingTimer;      // time since left wall slide, but still clinging
@@ -91,10 +92,10 @@ public class PlayerMovement : MonoBehaviour {
     internal bool onGround;  // is the player on the ground?
 
     // gravity shifting
-    internal Vector2 gravDir = Vector2.down; // current gravity direction
+    internal float gravDir = 270;    // current gravity direction
     private float shiftBufferTimer,  // time since grav shift input
-                  shiftRefreshTimer; // time since last grav shift
-    private Vector2 shiftBufferDir;  // buffered grav shift direction
+                  shiftRefreshTimer, // time since last grav shift
+                  shiftBufferDir;    // buffered grav shift direction
     private int shiftsRemaining;     // number of grav shifts remaining since leaving the ground
     private Quaternion shiftStart,   // start of gravity shift rotation
                        shiftEnd;     // end of gravity shift rotation
@@ -115,54 +116,70 @@ public class PlayerMovement : MonoBehaviour {
     #endregion
 
     private void Start() {
-        m = GetComponent<PlayerManager>();
         ResetBuffers();
+        ResetTo(respawmInfo);
+
+        TransitionManager.ResetLevel += () => {
+            ResetTo(respawmInfo, respawmInfo.z);
+            ResetBuffers();
+        };
     }
-    public void ResetTo(Vector2 pos, Vector2 gravDir) {
-        transform.SetPositionAndRotation(pos, Quaternion.LookRotation(Vector3.forward, -gravDir));
-        m.rb.velocity = Vector2.zero;
-        this.gravDir = gravDir;
-        shiftRotation.Stop();
+
+    public void ResetTo(Vector3 v) => ResetTo(v, v.z);
+    public void ResetTo(Vector2 pos, float newGravDir) {
+        transform.SetPositionAndRotation(pos + Vector2.up * PlayerManager.col.bounds.extents.y, Quaternion.Euler(0, 0, newGravDir + 90));
+
+        PlayerManager.rb.velocity = Vector2.zero;
+        gravDir = newGravDir;
         ChangeState(State.grounded);
+
+        shiftRotation.Stop();
         ResetBuffers();
     }
 
     private void Update() {
 
         // determine velocity
-        vel = RotateByVector(m.rb.velocity, gravDir, true);
+        vel = RotateVector(PlayerManager.rb.velocity, gravDir, true);
+
+        Vector2 gravVector = gravDir.DegToVector();
 
         // determine if touching ground or ceiling
         bool jumping = state == State.jumping || state == State.walljumping,
-             headBump = BoxCheck(-gravDir, ceilingCheckDist) == 1 && jumping;
-             onGround = BoxCheck(gravDir, groundCheckDist) == 1 && !jumping;
+             headBump = BoxCheck(-gravVector, ceilingCheckDist) == 1 && jumping;
+             onGround = BoxCheck(gravVector, groundCheckDist) == 1 && !jumping;
 
         // determine wall proximity
-        Vector2 rightVector = RotateByVector(Vector2.right, gravDir);
+        Vector2 rightVector = RotateVector(Vector2.right, gravDir);
         int wallDir = BoxCheck(rightVector, wallCheckDist) - BoxCheck(-rightVector, wallCheckDist);
 
+        // outer input
+        Vector2 rawInput       = lockMovement ? Vector2.zero : PlayerManager.input.Move;
+        bool inputJumpDown     = PlayerManager.input.Jump.down && !lockMovement,
+             inputJumpReleased = PlayerManager.input.Jump.released && !lockMovement,
+             inputActionDown   = PlayerManager.input.Action.down && !lockMovement;
+
         // directional input
-        Vector2 rawInput    = m.input.Move,
-                input       = ConfineDirections(RotateByVector(rawInput, gravDir, true), 8),
-                shiftInput  = ConfineDirections(rawInput, 4, VectFunc(Mathf.Abs, new Vector2(gravDir.y, gravDir.x)));
+        Vector2 input       = ConfineDirections(RotateVector(rawInput, gravDir, true), 8),
+                shiftInput  = ConfineDirections(rawInput, 4, VectFunc(Mathf.Abs, new Vector2(gravVector.y, gravVector.x)));
         // jump input
-        bool jumpDown       = BufferTimer(m.input.Jump.down, jumpBuffer, ref jumpBufferTimer),
-             jumpReleased   = m.input.Jump.released,
+        bool jumpDown       = BufferTimer(inputJumpDown, jumpBuffer, ref jumpBufferTimer),
+             jumpReleased   = inputJumpReleased,
         // shift input
-             shiftDown      = m.input.Action.down && shiftInput != Vector2.zero && shiftInput != gravDir,
+             shiftDown      = inputActionDown && shiftInput != Vector2.zero && shiftInput != gravVector,
              shiftBuffered  = BufferTimer(shiftDown, shiftBuffer, ref shiftBufferTimer),
         // wall input
              xInput         = Mathf.Abs(input.x) > 0.01f,
              newWall        = !(wallJumpDir == wallDir && state == State.walljumping),
-             slideInput     = Sign0(input.x) == wallDir && xInput && newWall && !onGround,
+             slideInput     = input.x.Sign0() == wallDir && xInput && newWall && !onGround,
              clinging       = BufferTimer(slideInput, wallClingTime, ref wallClingTimer),
              wallJumpDown   = wallDir != 0 && jumpDown && newWall;
 
         // gravity shift
-        if (shiftDown) shiftBufferDir = shiftInput;
+        if (shiftDown) shiftBufferDir = Mathf.Atan2(shiftInput.y, shiftInput.x) * Mathf.Rad2Deg;
         if (onGround) shiftsRemaining = maxShifts;
         if (shiftsRemaining > 0) shiftRefreshTimer += Time.deltaTime;
-        m.rend.color = shiftsRemaining > 0 ? Color.white : Color.red;
+        PlayerManager.rend.color = shiftsRemaining > 0 ? Color.white : Color.red;
 
         if (shiftBuffered && shiftsRemaining > 0 && shiftRefreshTimer >= shiftRefreshTime) {
             shiftRefreshTimer = 0;
@@ -173,16 +190,16 @@ public class PlayerMovement : MonoBehaviour {
             gravDir = shiftBufferDir;
             shiftRotation.Start();
             shiftStart = transform.rotation;
-            shiftEnd = Quaternion.LookRotation(Vector3.forward, -gravDir);
+            shiftEnd = Quaternion.Euler(0, 0, gravDir + 90);
 
             // impacts to state machine
             onGround = false;
             ChangeState(State.falling);
 
             // effects
-            m.ScreenFreeze(shiftScreenFreezeDur);
-            m.cam.Shake(shiftShake);
-            m.cam.Bounce(shiftBounce, gravDir * -1);
+            PlayerManager.instance.ScreenFreeze(shiftScreenFreezeDur);
+            PlayerManager.cam.Shake(shiftShake);
+            PlayerManager.cam.Bounce(shiftBounce, gravVector * -1f);
 
             return;
         }
@@ -207,7 +224,7 @@ public class PlayerMovement : MonoBehaviour {
 
 
             case State.jumping:
-                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * Sign0(input.x)));
+                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()));
 
                 if (jumpReleased || headBump) {
                     jumpCurve.Stop();
@@ -225,7 +242,7 @@ public class PlayerMovement : MonoBehaviour {
                 if (prevState == State.walljumping && stateDur <= walljumpNoTurnTime && input.x == wallJumpDir)
                     input.x = 0;
 
-                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * Sign0(input.x)));
+                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()));
 
                 vel.y -= fallGrav * Time.deltaTime;
 
@@ -295,7 +312,7 @@ public class PlayerMovement : MonoBehaviour {
         vel.y = Mathf.Max(vel.y, -(input.y < 0 ? fastFallSpeed : maxFallSpeed));
 
         // applying gravity adjusted velocity
-        m.rb.velocity = RotateByVector(vel, gravDir);
+        PlayerManager.rb.velocity = RotateVector(vel, gravDir);
     }
 
     private void FixedUpdate() {
@@ -303,7 +320,7 @@ public class PlayerMovement : MonoBehaviour {
         if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate(false));
     }
 
-    private void Run(float dir, float accel, float maxSpeed) => vel.x += (Sign0(dir) * maxSpeed - vel.x) * accel * Time.deltaTime; // thank you https://pastebin.com/Dju3wz6J
+    private void Run(float dir, float accel, float maxSpeed) => vel.x += (dir.Sign0() * maxSpeed - vel.x) * accel * Time.deltaTime; // thank you https://pastebin.com/Dju3wz6J
 
     // timer functions
     private bool BufferTimer(bool reset, float time, ref float timer) {
@@ -313,13 +330,8 @@ public class PlayerMovement : MonoBehaviour {
     private void ResetBuffers() => jumpBufferTimer = shiftBufferTimer = Mathf.Infinity;
 
     // math functions
-    private int Sign0(float i) => i > 0 ? 1 : i < 0 ? -1 : 0;
-    private float RoundTo(float i, int p) {
-        float ten = Mathf.Pow(10, p);
-        return Mathf.Round(i * ten) / ten;
-    }
-    private Vector2 RotateByVector(Vector2 v, Vector2 r, bool inverse = false) {
-        float a = Mathf.Atan2(r.y, r.x) + Mathf.PI / 2;
+    private Vector2 RotateVector(Vector2 v, float r, bool inverse = false) {
+        float a = (r + 90) * Mathf.Deg2Rad;
         if (inverse) a = Mathf.PI * 2 - a;
         float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
         return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
@@ -331,14 +343,16 @@ public class PlayerMovement : MonoBehaviour {
 
         float m = 2f * Mathf.PI / dir,
               a = Mathf.Round(Mathf.Atan2(v.y, v.x) / m) * m;
-        return VectFunc(RoundTo, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), 3);
+        Vector2 v1 = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+
+        return new Vector2(v1.x.RoundTo(3), v1.y.RoundTo(3));
     }
     private Vector2 VectFunc(System.Func<float, int, float> f, Vector2 v, int i) => new Vector2(f(v.x, i), f(v.y, i));
     private Vector2 VectFunc(System.Func<float, float> f, Vector2 v) => new Vector2(f(v.x), f(v.y));
 
     // boxcast functions
     private int BoxCheck(Vector2 dir, float dist) {
-        RaycastHit2D hit = Physics2D.BoxCast(transform.position, m.col.size * transform.localScale, transform.eulerAngles.z, dir, dist, m.groundMask);
+        RaycastHit2D hit = Physics2D.BoxCast(transform.position, PlayerManager.col.size * transform.localScale, transform.eulerAngles.z, dir, dist, PlayerManager.groundMask);
         return hit.normal == dir * -1 ? 1 : 0;
     }
 }

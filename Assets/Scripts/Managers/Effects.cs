@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class Effects : MonoBehaviour {
 
-    private PlayerManager m;
 
     [SerializeField] private ParticleSystem starSystem;
     [SerializeField] private float starRotationLerpTime;
@@ -14,17 +13,18 @@ public class Effects : MonoBehaviour {
     private Vector2 prevCamPos;
 
     private void Start() {
-        m = FindObjectOfType<PlayerManager>();
-        prevLerpAngle = m.transform.eulerAngles.z * Mathf.Deg2Rad;
+        prevLerpAngle = PlayerManager.instance.transform.eulerAngles.z * Mathf.Deg2Rad;
+
+        TransitionManager.ResetLevel += () => lerpAngle = PlayerMovement.respawmInfo.z + 90;
     }
 
     private void FixedUpdate() {
 
         // rotate particle spawner
-        starSystem.transform.parent.SetPositionAndRotation(m.cam.transform.position, m.transform.rotation);
+        starSystem.transform.parent.SetPositionAndRotation(PlayerManager.cam.transform.position, PlayerManager.instance.transform.rotation);
 
         // rotate particles around player and rotate their velocity
-        lerpAngle = Mathf.SmoothDampAngle(lerpAngle, m.transform.eulerAngles.z, ref lerpVel, starRotationLerpTime, Mathf.Infinity, Time.fixedDeltaTime);
+        lerpAngle = Mathf.SmoothDampAngle(lerpAngle, PlayerManager.instance.transform.eulerAngles.z, ref lerpVel, starRotationLerpTime, Mathf.Infinity, Time.fixedDeltaTime);
 
         var particles = new ParticleSystem.Particle[starSystem.main.maxParticles];
         int num = starSystem.GetParticles(particles);
@@ -33,13 +33,13 @@ public class Effects : MonoBehaviour {
         float angleDelta = (lerpAngle - prevLerpAngle) * Mathf.Deg2Rad,
                 cos = Mathf.Cos(angleDelta), sin = Mathf.Sin(angleDelta),
                 velAngle = (lerpAngle + 90f) * Mathf.Deg2Rad;
-        Vector2 pivot = m.transform.position,
+        Vector2 pivot = PlayerManager.instance.transform.position,
                 velDir = new Vector2(Mathf.Cos(velAngle), Mathf.Sin(velAngle));
         prevLerpAngle = lerpAngle;
 
         // parallax
 
-        Vector2 camPos = m.cam.transform.position,
+        Vector2 camPos = PlayerManager.cam.transform.position,
                 camDelta = camPos - prevCamPos;
         prevCamPos = camPos;
         float minSpeed = starSystem.main.startSpeed.constantMin,

@@ -33,25 +33,27 @@ public class CameraMovement : MonoBehaviour {
     private SmartCurve bounceCurve = new SmartCurve();
     private Vector2 bouncePos, bounceDir;
 
-    private PlayerManager m;
-
     private void Start() {
-        m = FindObjectOfType<PlayerManager>();
+        PlayerManager.rooms.RoomChange.AddListener(ChangeRoom);
 
+        RoomManager.instance.CheckRooms(PlayerMovement.respawmInfo);
         transitionCurve.Stop();
 
-        m.rooms.RoomChange.AddListener(ChangeRoom);
-        Room startRoom = m.rooms.CheckRooms();
-        if (startRoom != null) {
-            transitionPos = trackPos = lowerTrackBound = startRoom.pos * m.rooms.roomSize;
-            upperTrackBound = startRoom.UpperBound() * m.rooms.roomSize;
-        }
+        TransitionManager.ResetLevel += () => {
+            RoomManager.instance.CheckRooms(PlayerMovement.respawmInfo);
+            transitionCurve.Stop();
+        };
+
+        //if (startRoom != null) {
+        //    transitionPos = trackPos = lowerTrackBound = startRoom.pos * m.rooms.roomSize;
+        //    upperTrackBound = startRoom.UpperBound() * m.rooms.roomSize;
+        //}
     }
 
     private void Update() {
 
         // transition
-        float transitionPercent = transitionCurve.Evaluate();
+        float transitionPercent = transitionCurve.Done() ? 1f : transitionCurve.Evaluate();
         transitionPos = Vector2.LerpUnclamped(transitionStart, trackPos, transitionPercent);
 
         // camera effects
@@ -80,7 +82,7 @@ public class CameraMovement : MonoBehaviour {
 
     private void FixedUpdate() {
         // tracking
-        Vector2 pushbox = PushBox(m.transform.position, trackPos, trackBoxExtents);
+        Vector2 pushbox = PushBox(PlayerManager.instance.transform.position, trackPos, trackBoxExtents);
         Vector2 smooth = Vector2.SmoothDamp(trackPos, pushbox, ref trackVel, trackSpeed, Mathf.Infinity, Time.fixedDeltaTime);
         Vector2 clamp = VectorClamp(smooth, lowerTrackBound, upperTrackBound);
         trackPos = clamp;
@@ -96,8 +98,8 @@ public class CameraMovement : MonoBehaviour {
         transitionStart = transitionPos;
         transitionCurve.Start();
 
-        lowerTrackBound = r.pos * m.rooms.roomSize;
-        upperTrackBound = r.UpperBound() * m.rooms.roomSize;
+        lowerTrackBound = r.pos * PlayerManager.rooms.roomSize;
+        upperTrackBound = r.UpperBound() * PlayerManager.rooms.roomSize;
     }
 
     public void Shake(SmartCurve shake) => shakes.Add(shake.Copy());

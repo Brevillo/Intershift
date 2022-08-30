@@ -19,16 +19,16 @@ public class SmartCurve {
     public float
         timeScale = 1,
         valueScale = 1;
-    public bool unscaledTime = false,
-                fixedTime = false;
+    public enum TimeType { Regular, Fixed, Unscaled, FixedUnscaled};
+    public TimeType timeType = TimeType.Regular;
 
     private float timer = 0;
-    public SmartCurve() => new SmartCurve(null);
-    public SmartCurve(AnimationCurve curve, float timeScale = 1, float valueScale = 1, bool unscaledTime = false) {
-        this.curve        = curve;
-        this.unscaledTime = unscaledTime;
-        this.valueScale   = valueScale;
-        this.timeScale    = timeScale;
+    public SmartCurve() => new SmartCurve(null, 1, 1, TimeType.Regular);
+    public SmartCurve(AnimationCurve curve, float timeScale, float valueScale, TimeType timeType) {
+        this.curve      = curve;
+        this.timeType   = timeType;
+        this.valueScale = valueScale;
+        this.timeScale  = timeScale;
         timer = 0;
     }
 
@@ -37,8 +37,14 @@ public class SmartCurve {
     /// </summary>
     public float Evaluate(bool derivative = false) {
         if (curve == null) return 0;
-        float deltaTime = fixedTime ? unscaledTime ? Time.fixedUnscaledDeltaTime : Time.fixedDeltaTime
-                                    : unscaledTime ? Time.unscaledDeltaTime      : Time.deltaTime;
+
+        float deltaTime = timeType switch {
+            TimeType.Fixed => Time.fixedDeltaTime,
+            TimeType.Unscaled => Time.unscaledDeltaTime,
+            TimeType.FixedUnscaled => Time.fixedUnscaledDeltaTime,
+            _ => Time.deltaTime
+        };
+
         timer += deltaTime / timeScale;
         return (derivative ? Derivative(timer) / timeScale : curve.Evaluate(timer)) * valueScale;
     }
@@ -46,7 +52,7 @@ public class SmartCurve {
     /// <summary>
     /// Duplicates and returns the curve.
     /// </summary>
-    public SmartCurve Copy() => new SmartCurve(curve, timeScale, valueScale, unscaledTime);
+    public SmartCurve Copy() => new SmartCurve(curve, timeScale, valueScale, timeType);
 
     /// <summary>
     /// Starts the curve's timer.
@@ -82,16 +88,21 @@ public class SmartCurve {
 [System.Serializable]
 public class SmartCurveComposite {
 
+    public bool autoContinue;
     public SmartCurve[] curves;
     private int currentCurve;
+    private bool doneWithCurrentCurve;
 
     public SmartCurveComposite(SmartCurve[] curves) => this.curves = curves;
 
     /// <summary>
-    /// Evaluates for the current curve and progresses to the next if the current is finished.
+    /// Evaluates for the current curve. Progresses to the next if the current is finished and auto-continue is enabled.
     /// </summary>
     public float Evaluate() {
-        if (curves[currentCurve].Done()) currentCurve++;
+        if (curves[currentCurve].Done()) {
+            if (autoContinue) currentCurve++;
+            else doneWithCurrentCurve = true;
+        }
         return curves[currentCurve].Evaluate();
     }
 
@@ -103,9 +114,21 @@ public class SmartCurveComposite {
     /// <summary>
     /// Starts the smart curve composite.
     /// </summary>
-    public void Start() {
-        currentCurve = 0;
-        foreach (SmartCurve c in curves) c.Start();
+    /// <param name="startAt">
+    /// Start at a specific curve.
+    /// </param>
+    public void Start(int startAt = 0) {
+        currentCurve = startAt;
+        doneWithCurrentCurve = false;
+        for (int i = startAt; i < curves.Length; i++) curves[i].Start();
+    }
+
+    /// <summary>
+    /// Progress to the next curve.
+    /// </summary>
+    public void Continue() {
+        currentCurve++;
+        doneWithCurrentCurve = false;
     }
 
     /// <summary>
@@ -117,7 +140,7 @@ public class SmartCurveComposite {
     }
 
     /// <summary>
-    /// Specifies whether the smart curve composite has finished.
+    /// Specifies whether the current curve has finished.
     /// </summary>
-    public bool Done() => curves[curves.Length - 1].Done();
+    public bool Done() => doneWithCurrentCurve;
 }

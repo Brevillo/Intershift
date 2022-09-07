@@ -13,18 +13,18 @@ public class Effects : MonoBehaviour {
     private Vector2 prevCamPos;
 
     private void Start() {
-        prevLerpAngle = PlayerManager.instance.transform.eulerAngles.z * Mathf.Deg2Rad;
+        prevLerpAngle = PlayerManager.transform.eulerAngles.z * Mathf.Deg2Rad;
 
-        TransitionManager.ResetLevel += () => lerpAngle = PlayerMovement.respawmInfo.z + 90;
+        TransitionManager.ResetLevel += () => lerpAngle = PlayerMovement.respawnInfo.z + 90;
     }
 
     private void FixedUpdate() {
 
         // rotate particle spawner
-        starSystem.transform.parent.SetPositionAndRotation(PlayerManager.cam.transform.position, PlayerManager.instance.transform.rotation);
+        starSystem.transform.parent.SetPositionAndRotation(PlayerManager.cam.transform.position, PlayerManager.transform.rotation);
 
         // rotate particles around player and rotate their velocity
-        lerpAngle = Mathf.SmoothDampAngle(lerpAngle, PlayerManager.instance.transform.eulerAngles.z, ref lerpVel, starRotationLerpTime, Mathf.Infinity, Time.fixedDeltaTime);
+        lerpAngle = Mathf.SmoothDampAngle(lerpAngle, PlayerManager.transform.eulerAngles.z, ref lerpVel, starRotationLerpTime, Mathf.Infinity, Time.fixedDeltaTime);
 
         var particles = new ParticleSystem.Particle[starSystem.main.maxParticles];
         int num = starSystem.GetParticles(particles);
@@ -33,7 +33,7 @@ public class Effects : MonoBehaviour {
         float angleDelta = (lerpAngle - prevLerpAngle) * Mathf.Deg2Rad,
                 cos = Mathf.Cos(angleDelta), sin = Mathf.Sin(angleDelta),
                 velAngle = (lerpAngle + 90f) * Mathf.Deg2Rad;
-        Vector2 pivot = PlayerManager.instance.transform.position,
+        Vector2 pivot = PlayerManager.transform.position,
                 velDir = new Vector2(Mathf.Cos(velAngle), Mathf.Sin(velAngle));
         prevLerpAngle = lerpAngle;
 

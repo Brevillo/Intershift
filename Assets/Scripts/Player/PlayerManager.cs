@@ -9,17 +9,25 @@ public class PlayerManager : MonoBehaviour {
     public static PlayerMovement movement;
     public static PlayerHealth health;
 
+    public static new Transform transform;
     public static Rigidbody2D rb;
     public static BoxCollider2D col;
     public static SpriteRenderer rend;
 
     public static CameraMovement cam;
+    public static Camera cameraObject;
     public static RoomManager rooms;
 
     public static LayerMask groundMask, playerMask;
 
+    [SerializeField] LayerMask groundMaskSerialized, playerMaskSerialized;
     [SerializeField] private TextMeshProUGUI text;
     [SerializeField] private bool showDebugText;
+
+    private void OnValidate() {
+        groundMask = groundMaskSerialized;
+        playerMask = playerMaskSerialized;
+    }
 
     private void Awake() {
 
@@ -29,11 +37,13 @@ public class PlayerManager : MonoBehaviour {
         Get(ref movement);
         Get(ref health);
 
+        Get(ref transform);
         Get(ref rb);
         Get(ref col);
         Get(ref rend);
 
         cam = FindObjectOfType<CameraMovement>();
+        cameraObject = Camera.main;
         rooms = FindObjectOfType<RoomManager>();
 
         groundMask = LayerMask.GetMask("Ground");
@@ -45,15 +55,6 @@ public class PlayerManager : MonoBehaviour {
     public void FreezePlayer(bool freeze) {
         rb.isKinematic = freeze;
         if (freeze) rb.velocity = Vector2.zero;
-    }
-
-    public void ScreenFreeze(float dur) => StartCoroutine(ScreenFreezeCoroutine(dur));
-
-    private IEnumerator ScreenFreezeCoroutine(float dur) {
-        float ogTimeScale = Time.timeScale;
-        Time.timeScale = 0;
-        yield return new WaitForSecondsRealtime(dur);
-        Time.timeScale = ogTimeScale;
     }
 
     private void LateUpdate(){

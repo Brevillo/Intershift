@@ -32,6 +32,8 @@ public class RoomManager : MonoBehaviour {
 
     public static RoomManager instance;
 
+    [SerializeField] Vector2Int startAt;
+
     internal readonly Vector2 roomSize = new Vector2(64f, 36f);
     [SerializeField] private Vector2 checkBuffer;
     [SerializeField] private bool alwaysShowBounds,
@@ -39,15 +41,33 @@ public class RoomManager : MonoBehaviour {
 
     [SerializeField] private List<RoomGroup> roomGroups;
 
-    internal UnityEvent<Room> RoomChange = new UnityEvent<Room>();
+    internal event System.Action<Room> RoomChange;
     private Room currentRoom;
+
+    private void OnValidate() {
+        FindObjectOfType<Camera>().transform.position = (Vector3)(startAt * roomSize) + Vector3.back * 10f;
+
+        foreach (RoomGroup g in roomGroups)
+            foreach (Room r in g.rooms)
+                if (r.pos == startAt) {
+                    PlayerMovement.respawnInfo.XY(r.respawnPoints[0].RealPos(r.pos * roomSize));
+                    PlayerMovement.respawnInfo.Z(r.respawnPoints[0].gravDir);
+
+                    PlayerMovement player = FindObjectOfType<PlayerMovement>();
+                    Vector2 pos = PlayerMovement.respawnInfo;
+                    float dir = PlayerMovement.respawnInfo.z,
+                          height = player.GetComponent<BoxCollider2D>().bounds.extents.y;
+
+                    player.transform.SetPositionAndRotation(pos + -dir.DegToVector() * height, Quaternion.Euler(0, 0, dir + 90f));
+                }
+    }
 
     private void Awake() {
         instance = this;
     }
 
     private void Update() {
-        CheckRooms(PlayerManager.instance.transform.position);
+        CheckRooms(PlayerManager.transform.position);
     }
 
     public void CheckRooms(Vector2 player) {
@@ -69,7 +89,7 @@ public class RoomManager : MonoBehaviour {
                     float dist = Mathf.Infinity;
 
                     foreach (RespawnPoint p in r.respawnPoints) {
-                        float newDist = (p.pos - player).sqrMagnitude;
+                        float newDist = (p.RealPos(r.pos * roomSize) - player).sqrMagnitude;
                         if (newDist < dist) {
                             dist = newDist;
                             close = p;
@@ -77,8 +97,8 @@ public class RoomManager : MonoBehaviour {
                     }
 
                     if (close != null) {
-                        Vector2 respawn = close.RealPos(r.Center() * roomSize);
-                        PlayerMovement.respawmInfo = new Vector3(respawn.x, respawn.y, close.gravDir);
+                        Vector2 respawn = close.RealPos(r.pos * roomSize);
+                        PlayerMovement.respawnInfo = new Vector3(respawn.x, respawn.y, close.gravDir);
                     }
 
                     return;
@@ -102,8 +122,9 @@ public class RoomManager : MonoBehaviour {
 
                 // respawn points
                 foreach (RespawnPoint p in r.respawnPoints) {
-                    Gizmos.DrawWireSphere(p.pos + pos, 1f);
-                    Gizmos.DrawLine(p.pos + pos, p.RealPos(pos));
+                    Vector2 respawnPivot = r.pos * roomSize;
+                    Gizmos.DrawWireSphere(p.pos + respawnPivot, 1f);
+                    Gizmos.DrawLine(p.pos + respawnPivot, p.RealPos(respawnPivot));
                 }
 
                 if (showTriggers) {

@@ -9,6 +9,8 @@ public class SettingsManager : MonoBehaviour {
     [SerializeField] private Settings localSettings;
 
     private void Awake() {
+        Screen.SetResolution(3840, 2160, true);
+
         if (settings == null) settings = new Settings();
 
         localSettings = settings;

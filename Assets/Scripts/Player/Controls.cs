@@ -65,6 +65,14 @@ public class @Controls : IInputActionCollection, IDisposable
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
                     ""interactions"": """"
+                },
+                {
+                    ""name"": ""FPS"",
+                    ""type"": ""Button"",
+                    ""id"": ""81632554-56e1-46c2-a915-766c7f46e8aa"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
                 }
             ],
             ""bindings"": [
@@ -463,6 +471,17 @@ public class @Controls : IInputActionCollection, IDisposable
                     ""action"": ""Action"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""6183953e-cf93-4c06-9f20-e8c1ab3e9232"",
+                    ""path"": ""<Keyboard>/f"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""FPS"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -477,6 +496,7 @@ public class @Controls : IInputActionCollection, IDisposable
         m_Gameplay_Debug1 = m_Gameplay.FindAction("Debug1", throwIfNotFound: true);
         m_Gameplay_Debug2 = m_Gameplay.FindAction("Debug2", throwIfNotFound: true);
         m_Gameplay_Action = m_Gameplay.FindAction("Action", throwIfNotFound: true);
+        m_Gameplay_FPS = m_Gameplay.FindAction("FPS", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -532,6 +552,7 @@ public class @Controls : IInputActionCollection, IDisposable
     private readonly InputAction m_Gameplay_Debug1;
     private readonly InputAction m_Gameplay_Debug2;
     private readonly InputAction m_Gameplay_Action;
+    private readonly InputAction m_Gameplay_FPS;
     public struct GameplayActions
     {
         private @Controls m_Wrapper;
@@ -542,6 +563,7 @@ public class @Controls : IInputActionCollection, IDisposable
         public InputAction @Debug1 => m_Wrapper.m_Gameplay_Debug1;
         public InputAction @Debug2 => m_Wrapper.m_Gameplay_Debug2;
         public InputAction @Action => m_Wrapper.m_Gameplay_Action;
+        public InputAction @FPS => m_Wrapper.m_Gameplay_FPS;
         public InputActionMap Get() { return m_Wrapper.m_Gameplay; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -569,6 +591,9 @@ public class @Controls : IInputActionCollection, IDisposable
                 @Action.started -= m_Wrapper.m_GameplayActionsCallbackInterface.OnAction;
                 @Action.performed -= m_Wrapper.m_GameplayActionsCallbackInterface.OnAction;
                 @Action.canceled -= m_Wrapper.m_GameplayActionsCallbackInterface.OnAction;
+                @FPS.started -= m_Wrapper.m_GameplayActionsCallbackInterface.OnFPS;
+                @FPS.performed -= m_Wrapper.m_GameplayActionsCallbackInterface.OnFPS;
+                @FPS.canceled -= m_Wrapper.m_GameplayActionsCallbackInterface.OnFPS;
             }
             m_Wrapper.m_GameplayActionsCallbackInterface = instance;
             if (instance != null)
@@ -591,6 +616,9 @@ public class @Controls : IInputActionCollection, IDisposable
                 @Action.started += instance.OnAction;
                 @Action.performed += instance.OnAction;
                 @Action.canceled += instance.OnAction;
+                @FPS.started += instance.OnFPS;
+                @FPS.performed += instance.OnFPS;
+                @FPS.canceled += instance.OnFPS;
             }
         }
     }
@@ -603,5 +631,6 @@ public class @Controls : IInputActionCollection, IDisposable
         void OnDebug1(InputAction.CallbackContext context);
         void OnDebug2(InputAction.CallbackContext context);
         void OnAction(InputAction.CallbackContext context);
+        void OnFPS(InputAction.CallbackContext context);
     }
 }

@@ -14,10 +14,10 @@ public class PlayerHealth : MonoBehaviour {
     private bool dying;
 
     private void Start() {
-        TransitionManager.TransitionComplete += TransitionComplete;
+        TransitionManager.ResetLevel += ResetLevel;
     }
 
-    private void TransitionComplete() {
+    private void ResetLevel() {
         PlayerManager.movement.lockMovement = false;
         dying = false;
     }
@@ -25,6 +25,7 @@ public class PlayerHealth : MonoBehaviour {
     private void Update() {
         if (PlayerManager.input.Debug1.down) Death();
         if (PlayerManager.input.Debug2.down) SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        if (PlayerManager.input.FPS.down) FPSCounter.showFPS = !FPSCounter.showFPS;
     }
 
     public void Death() {

@@ -24,7 +24,8 @@ public class InputManager : MonoBehaviour {
         Action = new Button(),
 
         Debug1 = new Button(),
-        Debug2 = new Button();
+        Debug2 = new Button(),
+        FPS    = new Button();
 
     private void Awake() {
 
@@ -50,6 +51,9 @@ public class InputManager : MonoBehaviour {
 
         g.Debug2.performed += c => Debug2.pressed = true;
         g.Debug2.canceled += c => Debug2.pressed = false;
+
+        g.FPS.performed += c => FPS.pressed = true;
+        g.FPS.canceled += c => FPS.pressed = false;
     }
 
 
@@ -62,5 +66,6 @@ public class InputManager : MonoBehaviour {
 
         Debug1.Update();
         Debug2.Update();
+        FPS.Update();
     }
 }

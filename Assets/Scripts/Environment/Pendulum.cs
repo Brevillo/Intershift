@@ -17,19 +17,24 @@ public class Pendulum : MonoBehaviour {
     private int oldPoint, nextPoint;
 
     private void Start() {
+        TransitionManager.ResetLevel += ResetLevel;
+
         rb = GetComponent<Rigidbody2D>();
-
         startPos = transform.position;
-        oldPoint = nextPoint = startPoint;
-
         SetLine();
 
-        currentGravDir = PlayerManager.movement.gravDir;
+        ResetLevel();
     }
 
     private void OnValidate() {
         startPos = transform.position;
         SetLine();
+    }
+
+    private void ResetLevel() {
+        currentGravDir = PlayerMovement.respawnInfo.z;
+        oldPoint = nextPoint = startPoint;
+        transform.position = startPos;
     }
 
     private void SetLine() {

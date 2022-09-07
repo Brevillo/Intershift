@@ -1,108 +1,102 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 
 public class PlayerMovement : MonoBehaviour {
 
-    /* Features (roughly in order of appearance)
-    -  shift gravity and rotate to that direction
-    -  input direction is relative to current gravity
-    -  specific max movement speed
-    -  different acceleration/decceleration for ground/air
-    -  exact jump heigh specification
-    -  different gravity for jump/falling
-    -  hover at the peak of your jump
-    -  clamp fall speed (faster/slower based on input)
-    -  coyote time
-    -  jump buffer
-    -  slide down walls with a specific speed and acceleration
-    -  cling to walls for a short period before leaving them
-    -  walljumping to specific height and horizontal distance
-    -  lock input for a short duration after respawning
-    */
-
     #region parameters
 
+    // the first variable has to be separate because otherwise the header is applied to every variable
     [Header("Running")]
-    [SerializeField] private float runSpeed = 11f;
     [SerializeField] private float
-        groundAccel = 16f,
-        groundDeccel = 20f,
-        airAccel = 12f,
-        airDeccel = 20f;
+        runSpeed = 18f;                 // max run speed
+    [SerializeField] private float
+        groundAccel = 15f,              // acceleration while grounded
+        groundDeccel = 30f,             // decceleration while grounded
+        airAccel = 15f,                 // acceleration while in air
+        airDeccel = 10f;                // decceleration while in air
 
     [Header("Jumping")]
-    [SerializeField] private SmartCurve jumpCurve;
+    [SerializeField] private SmartCurve
+        jumpCurve;                      // animation curve for the velocity of the jump
     [SerializeField] private float
-        jumpHeight = 4f,
-        fallGrav = 100f,
-        maxFallSpeed = 14f,
-        fastFallSpeed = 20f,
-        coyoteTime = 0.1f,
-        jumpBuffer = 0.1f;
+        jumpHeight = 4f,                // max jump height
+        fallGrav = 100f,                // gravity strength of the player while moving down
+        maxFallSpeed = 30f,             // max downward speed of the player
+        fastFallSpeed = 40f,            // max downward speed of the player inputting the down direction
+        coyoteTime = 0.08f,             // time after leaving the ground when the player can still jump
+        jumpBuffer = 0.1f;              // time before touching the ground when the player can buffer a jump input 
 
     [Header("Wall Jumping")]
-    [SerializeField] private SmartCurve wallJumpCurve;
-    [SerializeField] private Vector2 walljumpVector = new Vector2(1.5f, 4f);
+    [SerializeField] private SmartCurve
+        wallJumpCurve;                  // animation curve for the velocity of the walljump
+    [SerializeField] private Vector2
+        walljumpVector = new Vector2(0.5f, 4f);  // max horizontal and vertical distances of the walljump
     [SerializeField] private float
-        walljumpSpeed,
-        walljumpNoTurnTime,
-        wallClingTime = 0.09f,
-        slideGrav = 5f,
-        slideSpeed = 6f;
+        walljumpSpeed = 25f,            // horizontal speed of the walljump
+        walljumpNoTurnTime = 0f,        // time after the player has boosted from the wall before they can turn back towards the wall
+        wallClingTime = 0.05f,          // time after trying to stop wall sliding before the player stops sliding
+        slideGrav = 10f,                // gravity strength of the player while wall sliding
+        slideSpeed = 8f;                // max downward speed of the player while wall sliding
 
     [Header("Gravity Shifting")]
-    [SerializeField] internal int maxShifts = 1;
+    [SerializeField] internal int
+        maxShifts = 1;                  // max number of gravity shifts after leaving the ground
     [SerializeField] private float
-        shiftBuffer = 0.1f,
-        shiftRefreshTime,
-        shiftScreenFreezeDur;
+        shiftBuffer = 0.1f,             // time before regaining the ability to gravity shift when the player can buffer a shift input
+        shiftRefreshTime = 0.1f,        // time after landing when the player's shifts are refilled
+        shiftScreenFreezeDur = 0.05f;   // time to freeze the screen after gravity shifting
     [SerializeField] private SmartCurve
-        shiftRotation,
-        shiftShake,
-        shiftBounce;
+        shiftRotation,                  // animation curve of the players rotation after gravity shifting
+        shiftShake,                     // animation curve of the screen shake after gravity shifting
+        shiftBounce;                    // animation curve of the screen bounce after gravity shifting
 
     [Header("Other")]
-    [SerializeField] private float groundCheckDist = 0.05f;
     [SerializeField] private float
-        ceilingCheckDist = 0.05f,
-        wallCheckDist = 0.1f;
+        groundCheckDist = 0.05f;        // distance from the bottom of the player's collider to check for the ground
+    [SerializeField] private float
+        ceilingCheckDist = 0.05f,       // distance from the top of the player's collider to check for the ceiling
+        wallCheckDist = 0.1f;           // distance from the sides of the player's collider to check for walls
 
     [Header("Sound")]
-    [SerializeField] private float stepDist;
+    [SerializeField] private float
+        stepDist = 3f;                  // the horizontal distance for the player to cover before playing the step sound
     [SerializeField] private string
-        stepSound,
-        landSound,
-        walljumpSound;
+        stepSound,                      // sound for the player walking on ground
+        landSound,                      // sound for the player becoming grounded
+        walljumpSound;                  // sound for the player doing a walljump
 
     #endregion
 
+    public static Vector3 respawnInfo = Vector3.forward * -90f; // x/y are position, z is gravDir
+    internal bool lockMovement = false;                         // locks the input
+    internal float gravDir { get; private set; } = -90f;        // player gravity direction in degrees
+
     #region private variables
 
-    public static Vector3 respawmInfo = Vector3.forward * 270f;
-
     // movement
-    internal bool lockMovement;
     private float
         jumpBufferTimer,     // time since jump pressed
-        wallClingTimer;      // time since left wall slide, but still clinging
+        wallClingTimer,      // time since left wall slide, but still clinging
+        walljumpNoTurnTimer; // time since horizontal wall boost ended
     private int wallJumpDir; // wallDir of the current walljump
-    private Vector2 vel;     // velocity adjusted for gravity
-    internal bool onGround;  // is the player on the ground?
+    private bool onGround;   // is the player on the ground?
 
     // gravity shifting
-    internal float gravDir = 270;    // current gravity direction
     private float shiftBufferTimer,  // time since grav shift input
                   shiftRefreshTimer, // time since last grav shift
-                  shiftBufferDir;    // buffered grav shift direction
+                  shiftBufferDir,    // buffered grav shift direction
+                  shiftStart,   // start of gravity shift rotation
+                  shiftEnd;     // end of gravity shift rotation
     private int shiftsRemaining;     // number of grav shifts remaining since leaving the ground
-    private Quaternion shiftStart,   // start of gravity shift rotation
-                       shiftEnd;     // end of gravity shift rotation
     
     // state managment
-    private enum State { grounded, jumping, falling, sliding, walljumping };
-    private State state = State.grounded, prevState;
+    private enum State {
+        grounded,    // player is grounded
+        jumping,     // player is moving upwards after being grounded
+        falling,     // player is in the air moving downwards
+        sliding,     // player is touching a wall and holding that direction
+        walljumping, // player is moving away and up from a wall after having touched the wall (not necessarily sliding)
+    };
+    private State state, prevState;
     private float stateDur;
     private void ChangeState(State newState) {
         prevState = state;
@@ -116,36 +110,37 @@ public class PlayerMovement : MonoBehaviour {
     #endregion
 
     private void Start() {
-        ResetBuffers();
-        ResetTo(respawmInfo);
-
-        TransitionManager.ResetLevel += () => {
-            ResetTo(respawmInfo, respawmInfo.z);
-            ResetBuffers();
-        };
+        TransitionManager.ResetLevel += ResetLevel;
+        ResetLevel();
     }
 
-    public void ResetTo(Vector3 v) => ResetTo(v, v.z);
-    public void ResetTo(Vector2 pos, float newGravDir) {
-        transform.SetPositionAndRotation(pos + Vector2.up * PlayerManager.col.bounds.extents.y, Quaternion.Euler(0, 0, newGravDir + 90));
+    private void ResetLevel() {
+
+        Vector2 pos = respawnInfo;
+        float newGravDir = respawnInfo.z;
+
+        transform.SetPositionAndRotation(pos + -newGravDir.DegToVector() * PlayerManager.col.bounds.extents.y, Quaternion.Euler(0, 0, newGravDir + 90));
 
         PlayerManager.rb.velocity = Vector2.zero;
         gravDir = newGravDir;
         ChangeState(State.grounded);
 
         shiftRotation.Stop();
-        ResetBuffers();
+        jumpCurve.Stop();
+        wallJumpCurve.Stop();
+        shiftStart = shiftEnd = gravDir + 90f;
+        jumpBufferTimer = shiftBufferTimer = Mathf.Infinity;
     }
 
     private void Update() {
 
         // determine velocity
-        vel = RotateVector(PlayerManager.rb.velocity, gravDir, true);
+        Vector2 vel = RotateVector(PlayerManager.rb.velocity, gravDir, true);
 
         Vector2 gravVector = gravDir.DegToVector();
 
         // determine if touching ground or ceiling
-        bool jumping = state == State.jumping || state == State.walljumping,
+        bool jumping  = state == State.jumping || state == State.walljumping,
              headBump = BoxCheck(-gravVector, ceilingCheckDist) == 1 && jumping;
              onGround = BoxCheck(gravVector, groundCheckDist) == 1 && !jumping;
 
@@ -153,27 +148,34 @@ public class PlayerMovement : MonoBehaviour {
         Vector2 rightVector = RotateVector(Vector2.right, gravDir);
         int wallDir = BoxCheck(rightVector, wallCheckDist) - BoxCheck(-rightVector, wallCheckDist);
 
-        // outer input
-        Vector2 rawInput       = lockMovement ? Vector2.zero : PlayerManager.input.Move;
-        bool inputJumpDown     = PlayerManager.input.Jump.down && !lockMovement,
-             inputJumpReleased = PlayerManager.input.Jump.released && !lockMovement,
-             inputActionDown   = PlayerManager.input.Action.down && !lockMovement;
+        // raw input
+        Vector2 inputRaw     = PlayerManager.input.Move;
+        bool jumpDownRaw     = PlayerManager.input.Jump.down,
+             jumpReleasedRaw = PlayerManager.input.Jump.released,
+             shiftDownRaw    = PlayerManager.input.Action.down;
 
-        // directional input
-        Vector2 input       = ConfineDirections(RotateVector(rawInput, gravDir, true), 8),
-                shiftInput  = ConfineDirections(rawInput, 4, VectFunc(Mathf.Abs, new Vector2(gravVector.y, gravVector.x)));
-        // jump input
-        bool jumpDown       = BufferTimer(inputJumpDown, jumpBuffer, ref jumpBufferTimer),
-             jumpReleased   = inputJumpReleased,
-        // shift input
-             shiftDown      = inputActionDown && shiftInput != Vector2.zero && shiftInput != gravVector,
-             shiftBuffered  = BufferTimer(shiftDown, shiftBuffer, ref shiftBufferTimer),
-        // wall input
-             xInput         = Mathf.Abs(input.x) > 0.01f,
-             newWall        = !(wallJumpDir == wallDir && state == State.walljumping),
-             slideInput     = input.x.Sign0() == wallDir && xInput && newWall && !onGround,
-             clinging       = BufferTimer(slideInput, wallClingTime, ref wallClingTimer),
-             wallJumpDown   = wallDir != 0 && jumpDown && newWall;
+        // lock movement
+        if (lockMovement) {
+            inputRaw = Vector2.zero;
+            jumpDownRaw = jumpReleasedRaw = shiftDownRaw = false;
+        }
+
+        Vector2 // directional input
+            input      = ConfineDirections(RotateVector(inputRaw, gravDir, true), 8),
+            shiftInput = ConfineDirections(inputRaw, 4, new Vector2(gravVector.y, gravVector.x).Abs());
+
+        bool
+        jumpBuff     = BufferTimer(jumpDownRaw, jumpBuffer, ref jumpBufferTimer),                  // jump buffered?
+        jumpReleased = jumpReleasedRaw,                                                            // jump button up this frame?
+        shiftDown    = shiftDownRaw && shiftInput != Vector2.zero,                                 // shift button down this frame?
+        shiftBuff    = BufferTimer(shiftDown, shiftBuffer, ref shiftBufferTimer),                  // shift buffered?
+        xInput       = Mathf.Abs(input.x) > 0.01f,                                                 // horizontal input is happening?
+        newWall      = !(wallJumpDir == wallDir && state == State.walljumping),                    // touching a wall that wasn't just jumped off of?
+        sliding      = input.x.Sign0() == wallDir && xInput && newWall && !onGround,               // able to slide?
+        clinging     = BufferTimer(sliding, wallClingTime, ref wallClingTimer),                    // still clinging?
+        walljumpBuff = wallDir != 0 && jumpBuff && newWall,                                        // walljump buffered?
+        boosting     = stateDur <= walljumpVector.x / walljumpSpeed && state == State.walljumping, // moving away from the wall after walljumping?
+        canTurn      = !BufferTimer(boosting, walljumpNoTurnTime, ref walljumpNoTurnTimer);        // can turn back to the wall after walljumping?
 
         // gravity shift
         if (shiftDown) shiftBufferDir = Mathf.Atan2(shiftInput.y, shiftInput.x) * Mathf.Rad2Deg;
@@ -181,7 +183,7 @@ public class PlayerMovement : MonoBehaviour {
         if (shiftsRemaining > 0) shiftRefreshTimer += Time.deltaTime;
         PlayerManager.rend.color = shiftsRemaining > 0 ? Color.white : Color.red;
 
-        if (shiftBuffered && shiftsRemaining > 0 && shiftRefreshTimer >= shiftRefreshTime) {
+        if (shiftBuff && shiftsRemaining > 0 && shiftRefreshTimer >= shiftRefreshTime) {
             shiftRefreshTimer = 0;
             shiftBufferTimer = Mathf.Infinity;
             shiftsRemaining--;
@@ -189,17 +191,17 @@ public class PlayerMovement : MonoBehaviour {
             // impacts to player
             gravDir = shiftBufferDir;
             shiftRotation.Start();
-            shiftStart = transform.rotation;
-            shiftEnd = Quaternion.Euler(0, 0, gravDir + 90);
+            shiftStart = transform.eulerAngles.z;
+            shiftEnd = gravDir + 90f;
 
             // impacts to state machine
             onGround = false;
             ChangeState(State.falling);
 
             // effects
-            PlayerManager.instance.ScreenFreeze(shiftScreenFreezeDur);
+            PlayerManager.cam.ScreenFreeze(shiftScreenFreezeDur);
             PlayerManager.cam.Shake(shiftShake);
-            PlayerManager.cam.Bounce(shiftBounce, gravVector * -1f);
+            PlayerManager.cam.Bounce(shiftBounce, gravDir.DegToVector() * -1f);
 
             return;
         }
@@ -216,60 +218,56 @@ public class PlayerMovement : MonoBehaviour {
         switch (state) {
 
             case State.grounded:
-                Run(input.x, xInput ? groundAccel : groundDeccel, runSpeed);
+                Run(input.x, xInput ? groundAccel : groundDeccel, runSpeed, ref vel);
 
                 if (!onGround) ChangeState(State.falling);
-                else if (jumpDown) ChangeState(State.jumping);
+                else if (jumpBuff) ChangeState(State.jumping);
                 break;
 
-
             case State.jumping:
-                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()));
+                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()), ref vel);
 
                 if (jumpReleased || headBump) {
                     jumpCurve.Stop();
                     vel.y = 0;
                 } else
-                    vel.y = jumpCurve.Evaluate(true);
+                    vel.y = jumpCurve.Evaluate();
 
-                if (wallJumpDown) ChangeState(State.walljumping);
+                if (walljumpBuff) ChangeState(State.walljumping);
                 else if (jumpCurve.Done()) ChangeState(State.falling);
-
                 break;
-
 
             case State.falling:
-                if (prevState == State.walljumping && stateDur <= walljumpNoTurnTime && input.x == wallJumpDir)
-                    input.x = 0;
+                
+                if (canTurn) Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()), ref vel);
 
-                Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()));
+                if (!wallJumpCurve.Done()) vel.y = wallJumpCurve.Evaluate();
+                else vel.y -= fallGrav * Time.deltaTime;
 
-                vel.y -= fallGrav * Time.deltaTime;
-
-                if (wallJumpDown) ChangeState(State.walljumping);
-                else if (slideInput) ChangeState(State.sliding);
-                else if (stateDur <= coyoteTime && jumpDown && prevState == State.grounded) ChangeState(State.jumping);
+                if (walljumpBuff) ChangeState(State.walljumping);
+                else if (sliding) ChangeState(State.sliding);
+                else if (stateDur <= coyoteTime && jumpBuff && prevState == State.grounded) ChangeState(State.jumping);
                 break;
-
 
             case State.sliding:
                 vel.y -= (slideSpeed + vel.y) * slideGrav * Time.deltaTime;
 
-                if (wallJumpDown) ChangeState(State.walljumping);
+                if (walljumpBuff) ChangeState(State.walljumping);
                 else if (!clinging || wallDir == 0) ChangeState(State.falling);
                 break;
 
-
             case State.walljumping:
+
+                if (canTurn) Run(input.x, xInput ? airAccel : airDeccel, Mathf.Max(runSpeed, vel.x * input.x.Sign0()), ref vel);
 
                 if (jumpReleased || headBump) {
                     wallJumpCurve.Stop();
                     vel.y = 0;
                 } else
-                    vel.y = wallJumpCurve.Evaluate(true);
+                    vel.y = wallJumpCurve.Evaluate();
 
-                if (wallJumpDown) ChangeState(State.walljumping);
-                else if (stateDur > walljumpVector.x / walljumpSpeed || wallJumpCurve.Done()) ChangeState(State.falling);
+                if (walljumpBuff) ChangeState(State.walljumping);
+                else if (!boosting && wallJumpCurve.Done()) ChangeState(State.falling);
                 break;
         }
 
@@ -288,11 +286,11 @@ public class PlayerMovement : MonoBehaviour {
 
             case State.walljumping:
                 Audio.Play(walljumpSound);
-                jumpBufferTimer = Mathf.Infinity;
+                jumpBufferTimer = walljumpNoTurnTimer = Mathf.Infinity;
                 wallJumpDir = wallDir;;
                 wallJumpCurve.Start();
                 wallJumpCurve.valueScale = walljumpVector.y;
-                vel.x =walljumpSpeed * -wallDir;
+                vel.x = walljumpSpeed * -wallDir;
                 break;
         }
 
@@ -316,18 +314,23 @@ public class PlayerMovement : MonoBehaviour {
     }
 
     private void FixedUpdate() {
-        // for first order changes to the player's position
-        if (!shiftRotation.Done()) transform.rotation = Quaternion.Slerp(shiftStart, shiftEnd, shiftRotation.Evaluate(false));
+
+        if (shiftRotation.Done()) {
+            PlayerManager.rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            transform.rotation = Quaternion.Euler(0f, 0f, shiftEnd);
+        } else {
+            PlayerManager.rb.MoveRotation(Mathf.LerpAngle(shiftStart, shiftEnd, Mathf.Min(1f, shiftRotation.Evaluate())));
+            PlayerManager.rb.constraints = 0;
+        }
     }
 
-    private void Run(float dir, float accel, float maxSpeed) => vel.x += (dir.Sign0() * maxSpeed - vel.x) * accel * Time.deltaTime; // thank you https://pastebin.com/Dju3wz6J
+    private void Run(float dir, float accel, float maxSpeed, ref Vector2 vel) => vel.x += (dir.Sign0() * maxSpeed - vel.x) * accel * Time.deltaTime; // thank you https://pastebin.com/Dju3wz6J
 
     // timer functions
     private bool BufferTimer(bool reset, float time, ref float timer) {
         timer = reset ? 0 : (timer + Time.deltaTime);
         return timer <= time;
     }
-    private void ResetBuffers() => jumpBufferTimer = shiftBufferTimer = Mathf.Infinity;
 
     // math functions
     private Vector2 RotateVector(Vector2 v, float r, bool inverse = false) {
@@ -347,8 +350,6 @@ public class PlayerMovement : MonoBehaviour {
 
         return new Vector2(v1.x.RoundTo(3), v1.y.RoundTo(3));
     }
-    private Vector2 VectFunc(System.Func<float, int, float> f, Vector2 v, int i) => new Vector2(f(v.x, i), f(v.y, i));
-    private Vector2 VectFunc(System.Func<float, float> f, Vector2 v) => new Vector2(f(v.x), f(v.y));
 
     // boxcast functions
     private int BoxCheck(Vector2 dir, float dist) {

@@ -73,6 +73,14 @@ public class @Controls : IInputActionCollection, IDisposable
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
                     ""interactions"": """"
+                },
+                {
+                    ""name"": ""Godmode"",
+                    ""type"": ""Button"",
+                    ""id"": ""4a3fcc87-7aa7-4587-83a7-99675d9a00e6"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
                 }
             ],
             ""bindings"": [
@@ -482,6 +490,17 @@ public class @Controls : IInputActionCollection, IDisposable
                     ""action"": ""FPS"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""aaf8dba0-f469-4eba-8aea-6d49c11b509a"",
+                    ""path"": ""<Keyboard>/g"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Godmode"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -497,6 +516,7 @@ public class @Controls : IInputActionCollection, IDisposable
         m_Gameplay_Debug2 = m_Gameplay.FindAction("Debug2", throwIfNotFound: true);
         m_Gameplay_Action = m_Gameplay.FindAction("Action", throwIfNotFound: true);
         m_Gameplay_FPS = m_Gameplay.FindAction("FPS", throwIfNotFound: true);
+        m_Gameplay_Godmode = m_Gameplay.FindAction("Godmode", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -553,6 +573,7 @@ public class @Controls : IInputActionCollection, IDisposable
     private readonly InputAction m_Gameplay_Debug2;
     private readonly InputAction m_Gameplay_Action;
     private readonly InputAction m_Gameplay_FPS;
+    private readonly InputAction m_Gameplay_Godmode;
     public struct GameplayActions
     {
         private @Controls m_Wrapper;
@@ -564,6 +585,7 @@ public class @Controls : IInputActionCollection, IDisposable
         public InputAction @Debug2 => m_Wrapper.m_Gameplay_Debug2;
         public InputAction @Action => m_Wrapper.m_Gameplay_Action;
         public InputAction @FPS => m_Wrapper.m_Gameplay_FPS;
+        public InputAction @Godmode => m_Wrapper.m_Gameplay_Godmode;
         public InputActionMap Get() { return m_Wrapper.m_Gameplay; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -594,6 +616,9 @@ public class @Controls : IInputActionCollection, IDisposable
                 @FPS.started -= m_Wrapper.m_GameplayActionsCallbackInterface.OnFPS;
                 @FPS.performed -= m_Wrapper.m_GameplayActionsCallbackInterface.OnFPS;
                 @FPS.canceled -= m_Wrapper.m_GameplayActionsCallbackInterface.OnFPS;
+                @Godmode.started -= m_Wrapper.m_GameplayActionsCallbackInterface.OnGodmode;
+                @Godmode.performed -= m_Wrapper.m_GameplayActionsCallbackInterface.OnGodmode;
+                @Godmode.canceled -= m_Wrapper.m_GameplayActionsCallbackInterface.OnGodmode;
             }
             m_Wrapper.m_GameplayActionsCallbackInterface = instance;
             if (instance != null)
@@ -619,6 +644,9 @@ public class @Controls : IInputActionCollection, IDisposable
                 @FPS.started += instance.OnFPS;
                 @FPS.performed += instance.OnFPS;
                 @FPS.canceled += instance.OnFPS;
+                @Godmode.started += instance.OnGodmode;
+                @Godmode.performed += instance.OnGodmode;
+                @Godmode.canceled += instance.OnGodmode;
             }
         }
     }
@@ -632,5 +660,6 @@ public class @Controls : IInputActionCollection, IDisposable
         void OnDebug2(InputAction.CallbackContext context);
         void OnAction(InputAction.CallbackContext context);
         void OnFPS(InputAction.CallbackContext context);
+        void OnGodmode(InputAction.CallbackContext context);
     }
 }

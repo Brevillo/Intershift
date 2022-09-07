@@ -60,6 +60,14 @@
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": ""
+                },
+                {
+                    "name": "Godmode",
+                    "type": "Button",
+                    "id": "4a3fcc87-7aa7-4587-83a7-99675d9a00e6",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
                 }
             ],
             "bindings": [
@@ -467,6 +475,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "FPS",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "aaf8dba0-f469-4eba-8aea-6d49c11b509a",
+                    "path": "<Keyboard>/g",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Godmode",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

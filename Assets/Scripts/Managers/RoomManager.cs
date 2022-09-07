@@ -12,6 +12,7 @@ public class RoomGroup {
 
 [System.Serializable]
 public class Room {
+    [HideInInspector] public string elementName;
     public string name;
     public Vector2Int pos = Vector2Int.zero,
                       size = Vector2Int.one;
@@ -45,21 +46,31 @@ public class RoomManager : MonoBehaviour {
     private Room currentRoom;
 
     private void OnValidate() {
-        FindObjectOfType<Camera>().transform.position = (Vector3)(startAt * roomSize) + Vector3.back * 10f;
 
+        // name room elements
         foreach (RoomGroup g in roomGroups)
-            foreach (Room r in g.rooms)
-                if (r.pos == startAt) {
-                    PlayerMovement.respawnInfo.XY(r.respawnPoints[0].RealPos(r.pos * roomSize));
-                    PlayerMovement.respawnInfo.Z(r.respawnPoints[0].gravDir);
+            for (int i = 0; i < g.rooms.Count; i++) {
+                Room r = g.rooms[i];
+                r.elementName = i + "   " + r.name;
+            }
 
-                    PlayerMovement player = FindObjectOfType<PlayerMovement>();
-                    Vector2 pos = PlayerMovement.respawnInfo;
-                    float dir = PlayerMovement.respawnInfo.z,
-                          height = player.GetComponent<BoxCollider2D>().bounds.extents.y;
+        // move camera and player according to startAt
 
-                    player.transform.SetPositionAndRotation(pos + -dir.DegToVector() * height, Quaternion.Euler(0, 0, dir + 90f));
-                }
+        Room room = roomGroups[startAt.x].rooms[startAt.y];
+        if (room != null) {
+
+            RespawnPoint respawn = room.respawnPoints[0];
+            PlayerMovement.respawnInfo.XY(respawn.RealPos(room.pos * roomSize));
+            PlayerMovement.respawnInfo.Z(respawn.gravDir);
+
+            PlayerMovement player = FindObjectOfType<PlayerMovement>();
+            Vector2 pos = PlayerMovement.respawnInfo;
+            float dir = PlayerMovement.respawnInfo.z,
+                  height = player.GetComponent<BoxCollider2D>().bounds.extents.y;
+
+            player.transform.SetPositionAndRotation(pos + -dir.DegToVector() * height, Quaternion.Euler(0, 0, dir + 90f));
+            FindObjectOfType<Camera>().transform.position = (Vector3)(room.pos * roomSize) + Vector3.back * 10f;
+        }
     }
 
     private void Awake() {

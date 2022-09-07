@@ -10,8 +10,8 @@ public class PlayerHealth : MonoBehaviour {
     [SerializeField] private float deathTimeFreezeDur;
     [SerializeField] private SmartCurve deathCamShake, slowDownCurve;
 
-    // death animation
     private bool dying;
+    private bool godmode;
 
     private void Start() {
         TransitionManager.ResetLevel += ResetLevel;
@@ -26,10 +26,11 @@ public class PlayerHealth : MonoBehaviour {
         if (PlayerManager.input.Debug1.down) Death();
         if (PlayerManager.input.Debug2.down) SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         if (PlayerManager.input.FPS.down) FPSCounter.showFPS = !FPSCounter.showFPS;
+        if (PlayerManager.input.Godmode.down) godmode = !godmode;
     }
 
     public void Death() {
-        if (dying) return;
+        if (dying || godmode) return;
 
         Audio.Play(deathSound);
         PlayerManager.cam.Shake(deathCamShake);

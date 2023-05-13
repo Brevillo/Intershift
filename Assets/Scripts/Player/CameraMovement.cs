@@ -15,15 +15,16 @@ public class CameraMovement : MonoBehaviour {
     */
     [SerializeField] private float trackSpeed;
     [SerializeField] internal Vector2 trackBoxExtents;
-    [SerializeField] private GameObject screenShakeCover;
-    [SerializeField] private SmartCurve transitionCurve;
+    [SerializeField] private RectTransform screenShakeCover;
+    [SerializeField] private SmartCurve transitionCurve, sizeCurve;
+    [SerializeField] private Camera cam;
 
     // transition
     private Vector2 transitionStart, transitionPos;
-    private float transitionPercent;
+    private float sizeStart = 1f, sizeEnd = 1f;
 
     // tracking
-    private Vector2 trackVel, trackPos, lowerTrackBound, upperTrackBound;
+    private Vector2 trackVel, trackPos, trackCenter, roomSize;
 
     // shake
     private List<SmartCurve> shakes = new List<SmartCurve>();
@@ -34,6 +35,7 @@ public class CameraMovement : MonoBehaviour {
     private Vector2 bouncePos, bounceDir;
 
     private void Start() {
+
         PlayerManager.rooms.RoomChange += ChangeRoom;
         TransitionManager.ResetLevel += ResetLevel;
 
@@ -44,11 +46,12 @@ public class CameraMovement : MonoBehaviour {
 
     private void ResetLevel() {
         transitionCurve.Stop();
+        sizeCurve.Stop();
         bounceCurve.Stop();
 
         RoomManager.instance.CheckRooms(PlayerMovement.respawnInfo);
         shakePos = bouncePos = trackVel = Vector2.zero;
-        transitionPos = trackPos = VectorClamp(PlayerManager.transform.position, lowerTrackBound, upperTrackBound);
+        transitionPos = trackPos = VectorClamp(PlayerManager.transform.position, trackCenter, roomSize);
     }
 
     private void Update() {
@@ -77,33 +80,48 @@ public class CameraMovement : MonoBehaviour {
 
     private void FixedUpdate() {
 
-        // transition
-        transitionPercent = transitionCurve.Done() ? 1f : transitionCurve.Evaluate();
-        transitionPos = Vector2.LerpUnclamped(transitionStart, trackPos, transitionPercent);
+        // size transition
+        float currentSize = Mathf.LerpUnclamped(sizeStart, sizeEnd, sizeCurve.Done() ? 1f : sizeCurve.Evaluate());
+        cam.orthographicSize = RoomManager.roomSize.y / 2 * currentSize;
 
         // tracking
-        Vector2 pushbox = PushBox(PlayerManager.transform.position, trackPos, trackBoxExtents);
-        Vector2 smooth = Vector2.SmoothDamp(trackPos, pushbox, ref trackVel, trackSpeed, Mathf.Infinity, Time.fixedDeltaTime);
-        Vector2 clamp = VectorClamp(smooth, lowerTrackBound, upperTrackBound);
+        Vector2 pushbox = PushBox(PlayerManager.transform.position, trackPos, trackBoxExtents),
+                smooth = Vector2.SmoothDamp(trackPos, pushbox, ref trackVel, trackSpeed, Mathf.Infinity, Time.fixedDeltaTime),
+                trackBounds = (roomSize - Vector2.one * sizeEnd) / 2f * RoomManager.roomSize,
+                clamp = VectorClamp(smooth, trackCenter - trackBounds, trackCenter + trackBounds);
         trackPos = clamp;
 
-        UpdatePosition();
-    }
+        // transition
+        float transitionPercent = transitionCurve.Done() ? 1f : transitionCurve.Evaluate();
+        transitionPos = Vector2.LerpUnclamped(transitionStart, trackPos, transitionPercent);
 
-    private void UpdatePosition() {
+        // set camera position
         transform.position = (Vector3)(transitionPos + shakePos + bouncePos) + Vector3.back * 10;
 
         // shake cover
-        screenShakeCover.SetActive(shakePos + bouncePos != Vector2.zero || transitionPercent > 1f);
-        screenShakeCover.transform.position = transitionPercent > 1f ? trackPos : transitionPos;
+        screenShakeCover.gameObject.SetActive(shakePos + bouncePos != Vector2.zero || transitionPercent > 1f);
+        screenShakeCover.position = transitionPercent > 1f ? trackPos : transitionPos;
+        screenShakeCover.sizeDelta = RoomManager.roomSize * currentSize;
     }
 
     public void ChangeRoom(Room r) {
         transitionStart = transitionPos;
         transitionCurve.Start();
 
-        lowerTrackBound = r.pos * PlayerManager.rooms.roomSize;
-        upperTrackBound = r.UpperBound() * PlayerManager.rooms.roomSize;
+        sizeStart = sizeEnd;
+        sizeEnd = r.cameraSize;
+        sizeCurve.Start();
+
+        trackCenter = r.center * RoomManager.roomSize;
+        roomSize = r.size;
+    }
+
+    public void Snap(Room r, int respawn) {
+        Vector2 trackCenter = r.center * RoomManager.roomSize,
+                trackBounds = (r.size - Vector2.one * r.cameraSize) / 2f * RoomManager.roomSize;
+
+        transform.position = (Vector3)VectorClamp(r.respawnPoints[respawn].worldPos, trackCenter - trackBounds, trackCenter + trackBounds) + Vector3.back * 10f;
+        cam.orthographicSize = RoomManager.roomSize.y / 2f * r.cameraSize;
     }
 
     public void Shake(SmartCurve shake) => shakes.Add(shake.Copy());

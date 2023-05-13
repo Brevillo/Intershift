@@ -72,7 +72,7 @@ TextureImporter:
       213: -741571133821024619
     second: basic tilemap_22
   externalObjects: {}
-  serializedVersion: 11
+  serializedVersion: 12
   mipmaps:
     mipMapMode: 0
     enableMipMap: 0
@@ -93,6 +93,7 @@ TextureImporter:
   streamingMipmaps: 0
   streamingMipmapsPriority: 0
   vTOnly: 0
+  ignoreMasterTextureLimit: 0
   grayScaleToAlpha: 0
   generateCubemap: 6
   cubemapConvolution: 0
@@ -131,6 +132,7 @@ TextureImporter:
   textureFormatSet: 0
   ignorePngGamma: 0
   applyGammaDecoding: 0
+  cookieLightType: 1
   platformSettings:
   - serializedVersion: 3
     buildTarget: DefaultTexturePlatform
@@ -158,6 +160,18 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 3
     buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Server
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -756,6 +770,30 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
+    nameFileIdTable:
+      basic tilemap_5: 7052450309620301925
+      basic tilemap_18: 87743726124901374
+      basic tilemap_20: 916572121603620529
+      basic tilemap_1: 4495847105659356629
+      basic tilemap_2: 3610580251529774910
+      basic tilemap_7: 4942035607233145980
+      basic tilemap_21: -1233573050233436740
+      basic tilemap_17: -8541990970258479803
+      basic tilemap_10: -1873649674940127820
+      basic tilemap_4: -1125569782441484068
+      basic tilemap_8: 874281675586055169
+      basic tilemap_9: -3761157732062886601
+      basic tilemap_11: -5003259803473298058
+      basic tilemap_6: -5305727249314352912
+      basic tilemap_0: -7813915791166012695
+      basic tilemap_13: 3568065759060776599
+      basic tilemap_16: 5455738206686016150
+      basic tilemap_14: 7678220777242041048
+      basic tilemap_22: -741571133821024619
+      basic tilemap_3: 7790425688772288372
+      basic tilemap_19: -1345533764180564929
+      basic tilemap_15: -6026367942228944056
+      basic tilemap_12: -7191851413174977686
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0

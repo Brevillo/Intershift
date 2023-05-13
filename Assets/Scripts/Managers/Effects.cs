@@ -39,8 +39,8 @@ public class Effects : MonoBehaviour {
 
         // parallax
 
-        Vector2 camPos = PlayerManager.cam.transform.position,
-                camDelta = camPos - prevCamPos;
+        Vector2 camPos = PlayerManager.cam.transform.position;
+        Vector3 camDelta = camPos - prevCamPos;
         prevCamPos = camPos;
         float minSpeed = starSystem.main.startSpeed.constantMin,
               speedDif = starSystem.main.startSpeed.constantMax - minSpeed;
@@ -50,7 +50,7 @@ public class Effects : MonoBehaviour {
             float speed = p.velocity.magnitude;
 
             p.velocity = velDir * speed;
-            p.position += (Vector3)camDelta * parallax.Evaluate(1f - (speed - minSpeed) / speedDif);
+            p.position += camDelta * parallax.Evaluate(1f - (speed - minSpeed) / speedDif);
             p.position = RotateVectorCached(p.position, pivot, cos, sin);
 
             particles[i] = p;
